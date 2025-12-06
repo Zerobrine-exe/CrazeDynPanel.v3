@@ -1,0 +1,2263 @@
+{% extends "base.html" %}
+
+{% block title %}Server Management - CrazeDyn Panel{% endblock %}
+
+{% block content %}
+<div class="server-page">
+    {% if server %}
+    <div class="server-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+            <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">{{ server.name }}</h1>
+            <p style="color: var(--text-secondary); font-size: 14px;">Port: {{ server.port }} | RAM: {{ server.min_ram }} - {{ server.max_ram }}</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button onclick="startServer()" class="btn btn-success btn-sm" id="start-btn">
+                <i class="fas fa-play"></i> Start
+            </button>
+            <button onclick="stopServer()" class="btn btn-danger btn-sm" id="stop-btn">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+            <button onclick="restartServer()" class="btn btn-warning btn-sm" id="restart-btn">
+                <i class="fas fa-redo"></i> Restart
+            </button>
+            <span class="status-badge status-offline" id="server-status">
+                <i class="fas fa-circle" style="font-size: 8px;"></i> Offline
+            </span>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="player-action-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Player Action</div>
+                <button class="modal-close" onclick="closeModal('player-action-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Player Name</label>
+                    <input type="text" class="input" id="player-action-name" placeholder="e.g. Steve">
+                </div>
+                <div class="form-group" id="player-action-reason-group" style="display:none;">
+                    <label class="form-label">Reason (optional)</label>
+                    <input type="text" class="input" id="player-action-reason" placeholder="Removed by panel">
+                </div>
+                <input type="hidden" id="player-action-type" value="">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('player-action-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitPlayerAction()">
+                    <i class="fas fa-check"></i> Apply
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab active" data-tab="overview-tab">
+                <i class="fas fa-chart-line"></i> Overview
+            </button>
+            <button class="tab" data-tab="players-tab">
+                <i class="fas fa-users"></i> Player Manager
+            </button>
+            <button class="tab" data-tab="worlds-tab">
+                <i class="fas fa-globe"></i> World Manager
+            </button>
+            <button class="tab" data-tab="files-tab">
+                <i class="fas fa-folder"></i> File Manager
+            </button>
+            <button class="tab" data-tab="plugins-tab">
+                <i class="fas fa-puzzle-piece"></i> Plugin Manager
+            </button>
+            <button class="tab" data-tab="mods-tab">
+                <i class="fas fa-cubes"></i> Mods
+            </button>
+            <button class="tab" data-tab="version-tab">
+                <i class="fas fa-code-branch"></i> Version
+            </button>
+            <button class="tab" data-tab="logs-tab">
+                <i class="fas fa-file-alt"></i> Game Logs
+            </button>
+            <button class="tab" data-tab="templates-tab">
+                <i class="fab fa-github"></i> Templates
+            </button>
+            <button class="tab" data-tab="backups-tab">
+                <i class="fas fa-archive"></i> Backups
+            </button>
+            <button class="tab" data-tab="scheduler-tab">
+                <i class="fas fa-clock"></i> Scheduler
+            </button>
+            <button class="tab" data-tab="notifications-tab">
+                <i class="fas fa-bell"></i> Notifications
+            </button>
+        </div>
+    </div>
+
+    <div id="overview-tab" class="tab-content active">
+        <div class="grid-4" style="margin-bottom: 24px;">
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>CPU Usage</h3>
+                    <div class="value" id="cpu-stat">0%</div>
+                </div>
+                <div class="stat-card-icon purple">
+                    <i class="fas fa-microchip"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>RAM Usage</h3>
+                    <div class="value" id="ram-stat">0 MB</div>
+                </div>
+                <div class="stat-card-icon blue">
+                    <i class="fas fa-memory"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>Players Online</h3>
+                    <div class="value" id="player-stat">0</div>
+                </div>
+                <div class="stat-card-icon green">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>TPS</h3>
+                    <div class="value" id="tps-stat">20.0</div>
+                </div>
+                <div class="stat-card-icon orange">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Server Console</div>
+                <button onclick="clearConsole()" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+            <div class="console-container">
+                <div class="console-output scrollbar-custom" id="console-output">
+                    <div class="line info">[INFO] Console ready. Start the server to see output...</div>
+                </div>
+                <div class="console-input-container">
+                    <input type="text" class="console-input" id="console-input" placeholder="Enter command..." onkeypress="if(event.key==='Enter') sendCommand()">
+                    <button onclick="sendCommand()" class="btn btn-primary btn-sm">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="players-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Player Manager</div>
+                <div style="display: flex; gap: 12px;">
+                    <input type="text" class="input" style="width: 250px;" placeholder="Search players..." id="player-search">
+                    <button onclick="refreshPlayers()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-bottom: 24px;">
+                <div class="stat-card">
+                    <div class="stat-card-info">
+                        <h3>Online Players</h3>
+                        <div class="value" id="online-players-count">0</div>
+                    </div>
+                    <div class="stat-card-icon green">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-info">
+                        <h3>Total Players</h3>
+                        <div class="value" id="total-players-count">0</div>
+                    </div>
+                    <div class="stat-card-icon blue">
+                        <i class="fas fa-user-friends"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>UUID</th>
+                            <th>Status</th>
+                            <th>Playtime</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="players-table">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                <i class="fas fa-users" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                                No players have joined yet
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <div class="card-title">Quick Actions</div>
+            </div>
+            <div class="grid-4">
+                <button onclick="openPlayerAction('kick')" class="btn btn-secondary" style="justify-content: center;">
+                    <i class="fas fa-user-slash"></i> Kick Player
+                </button>
+                <button onclick="openPlayerAction('ban')" class="btn btn-secondary" style="justify-content: center;">
+                    <i class="fas fa-ban"></i> Ban Player
+                </button>
+                <button onclick="openPlayerAction('whitelist')" class="btn btn-secondary" style="justify-content: center;">
+                    <i class="fas fa-user-plus"></i> Whitelist
+                </button>
+                <button onclick="openPlayerAction('op')" class="btn btn-secondary" style="justify-content: center;">
+                    <i class="fas fa-crown"></i> OP Player
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="worlds-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">World Manager</div>
+                <button onclick="openModal('create-world-modal')" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create World
+                </button>
+            </div>
+            
+            <div id="worlds-list" class="grid-3">
+                <div class="server-card" id="world-card-template" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                        <div>
+                            <h3 style="font-weight: 600; margin-bottom: 4px;" class="world-name">world</h3>
+                            <p style="color: var(--text-muted); font-size: 13px;" class="world-type">Normal</p>
+                        </div>
+                        <span class="status-badge status-online" style="font-size: 11px;">Default</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <div style="flex: 1; background: var(--bg-secondary); padding: 10px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 11px; color: var(--text-muted);">Size</div>
+                            <div style="font-weight: 600;" class="world-size">0 MB</div>
+                        </div>
+                        <div style="flex: 1; background: var(--bg-secondary); padding: 10px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 11px; color: var(--text-muted);">Seed</div>
+                            <div style="font-weight: 600; font-size: 12px;" class="world-seed">--</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center;" onclick="backupWorld(this)">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center;" onclick="resetWorld(this)">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" style="flex: 1; justify-content: center;" onclick="deleteWorld(this)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="empty-state" id="worlds-empty">
+                <div class="empty-state-icon"><i class="fas fa-globe"></i></div>
+                <div class="empty-state-title">No worlds found</div>
+                <div class="empty-state-text">Create your first world or start the server to generate one</div>
+                <button onclick="openModal('create-world-modal')" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create World
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="files-tab" class="tab-content">
+        <div class="grid-4" style="margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>CPU Usage</h3>
+                    <div class="value" id="files-cpu-stat">0%</div>
+                </div>
+                <div class="stat-card-icon purple">
+                    <i class="fas fa-microchip"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>RAM Usage</h3>
+                    <div class="value" id="files-ram-stat">0 MB</div>
+                </div>
+                <div class="stat-card-icon blue">
+                    <i class="fas fa-memory"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>TPS</h3>
+                    <div class="value" id="files-tps-stat">20.0</div>
+                </div>
+                <div class="stat-card-icon green">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-info">
+                    <h3>Uptime</h3>
+                    <div class="value" id="files-uptime-stat">0h</div>
+                </div>
+                <div class="stat-card-icon orange">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title" style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-folder-open" style="color: #fbbf24;"></i>
+                    <span id="current-path">/</span>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <div style="position: relative;">
+                        <input type="text" class="input" id="file-search-input" placeholder="Search files..." style="width: 200px; padding-right: 32px;" oninput="searchFiles()">
+                        <i class="fas fa-search" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                    </div>
+                    <button onclick="navigateUp()" class="btn btn-secondary btn-sm" title="Go up">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button onclick="navigateRoot()" class="btn btn-secondary btn-sm" title="Go to root">
+                        <i class="fas fa-home"></i> Back
+                    </button>
+                    <button onclick="pasteFiles()" class="btn btn-secondary btn-sm" title="Paste">
+                        <i class="fas fa-paste"></i>
+                    </button>
+                    <button onclick="openModal('upload-modal')" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                    <button onclick="createFolder()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-folder-plus"></i> New Folder
+                    </button>
+                    <button onclick="deleteSelectedFiles()" class="btn btn-danger btn-sm" title="Delete selected">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button onclick="refreshFiles()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-container" id="files-drop-zone" ondragover="event.preventDefault(); this.style.background='var(--bg-hover)';" ondragleave="this.style.background=''" ondrop="handleFileDrop(event)">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" class="checkbox" id="select-all-files" onclick="selectAllFiles()"></th>
+                            <th>Name</th>
+                            <th>Size</th>
+                            <th>Modified</th>
+                            <th style="width: 220px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-table">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                                Loading files...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="recent-backups-card" style="margin-top: 20px; background: var(--bg-secondary); border-radius: 12px; padding: 16px;">
+                <div style="font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fas fa-history" style="margin-right: 8px;"></i>Recent Backups</span>
+                    <button class="btn btn-primary btn-sm" onclick="createBackup('full')">
+                        <i class="fas fa-plus"></i> Quick Backup
+                    </button>
+                </div>
+                <div id="recent-backups-list">
+                    <div style="color: var(--text-muted); text-align: center; padding: 20px;">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="plugins-tab" class="tab-content">
+        <div class="grid-2" style="gap: 20px;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Installed Plugins</div>
+                    <button onclick="refreshPlugins()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div id="installed-plugins" style="max-height: 500px; overflow-y: auto;" class="scrollbar-custom">
+                    <div class="empty-state" style="padding: 40px;">
+                        <div class="empty-state-icon"><i class="fas fa-puzzle-piece"></i></div>
+                        <div class="empty-state-title">No plugins installed</div>
+                        <div class="empty-state-text">Browse and install plugins from the marketplace</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Plugin Marketplace</div>
+                    <select class="select" style="width: 150px;" id="plugin-source">
+                        <option value="spigot">SpigotMC</option>
+                        <option value="modrinth">Modrinth</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <input type="text" class="input" placeholder="Search plugins..." id="plugin-search" onkeyup="searchPlugins()">
+                </div>
+                <div id="plugin-marketplace" style="max-height: 450px; overflow-y: auto;" class="scrollbar-custom">
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+                        Loading plugins...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mods-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-cubes" style="margin-right: 8px; color: #a78bfa;"></i>Mod Manager (Modrinth)</div>
+                <div style="display: flex; gap: 12px;">
+                    <select class="select" id="mod-loader-filter" style="width: 120px;">
+                        <option value="fabric">Fabric</option>
+                        <option value="forge">Forge</option>
+                        <option value="quilt">Quilt</option>
+                        <option value="neoforge">NeoForge</option>
+                    </select>
+                    <select class="select" id="mod-mc-version" style="width: 100px;">
+                        <option value="1.21.4">1.21.4</option>
+                        <option value="1.21.3">1.21.3</option>
+                        <option value="1.21.1">1.21.1</option>
+                        <option value="1.20.6">1.20.6</option>
+                        <option value="1.20.4">1.20.4</option>
+                        <option value="1.20.1">1.20.1</option>
+                        <option value="1.19.4">1.19.4</option>
+                        <option value="1.19.2">1.19.2</option>
+                        <option value="1.18.2">1.18.2</option>
+                        <option value="1.16.5">1.16.5</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="gap: 20px;">
+                <div>
+                    <div style="margin-bottom: 16px;">
+                        <input type="text" class="input" placeholder="Search mods on Modrinth..." id="modrinth-search" onkeyup="if(event.key==='Enter')searchModrinthMods()">
+                        <button class="btn btn-primary btn-sm" style="margin-top: 8px;" onclick="searchModrinthMods()">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                    <div id="modrinth-results" style="max-height: 500px; overflow-y: auto;" class="scrollbar-custom">
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fas fa-search" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                            Search for mods to install
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">
+                        <i class="fas fa-folder" style="margin-right: 8px; color: #fbbf24;"></i>Installed Mods
+                    </h3>
+                    <div id="installed-mods" style="max-height: 500px; overflow-y: auto; background: var(--bg-secondary); border-radius: 12px; padding: 16px;" class="scrollbar-custom">
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                            No mods installed yet
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="loadInstalledMods()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="version-tab" class="tab-content">
+        <div class="grid-2" style="gap: 20px;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-server" style="margin-right: 8px; color: #22c55e;"></i>Current Server</div>
+                </div>
+                <div id="current-version-info" style="padding: 20px;">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-cube" style="font-size: 28px; color: white;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 24px; font-weight: 700;" id="server-software-name">Loading...</div>
+                            <div style="color: var(--text-muted);" id="server-mc-version">Version: --</div>
+                        </div>
+                    </div>
+                    <div class="grid-2" style="gap: 12px;">
+                        <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 12px; color: var(--text-muted);">Java Version</div>
+                            <div style="font-weight: 600;" id="server-java-version">--</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px;">
+                            <div style="font-size: 12px; color: var(--text-muted);">JAR File</div>
+                            <div style="font-weight: 600;" id="server-jar-name">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-download" style="margin-right: 8px; color: #3b82f6;"></i>Change Version</div>
+                </div>
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label class="form-label">Server Software</label>
+                        <select class="select" id="version-software-type" onchange="loadVersionOptions()">
+                            <option value="paper">PaperMC</option>
+                            <option value="vanilla">Vanilla</option>
+                            <option value="fabric">Fabric</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Minecraft Version</label>
+                        <select class="select" id="version-mc-select">
+                            <option value="">Select version...</option>
+                        </select>
+                    </div>
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Download URL</div>
+                        <div style="font-size: 13px; word-break: break-all; color: var(--text-secondary);" id="version-download-url">--</div>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="installServerVersion()">
+                        <i class="fas fa-download"></i> Download & Install
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-history" style="margin-right: 8px;"></i>Version History</div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Software</th>
+                            <th>Version</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="version-history-table">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">No version changes recorded</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="logs-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Game Log Inspector</div>
+                <div style="display: flex; gap: 12px;">
+                    <select class="select" style="width: 150px;" id="log-file-select">
+                        <option value="latest">latest.log</option>
+                    </select>
+                    <button onclick="refreshLogs()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                    <button onclick="downloadLog()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid-4" style="margin-bottom: 20px;">
+                <button class="btn btn-secondary btn-sm log-filter active" data-filter="all" style="justify-content: center;">
+                    All
+                </button>
+                <button class="btn btn-secondary btn-sm log-filter" data-filter="error" style="justify-content: center; color: #ef4444;">
+                    <i class="fas fa-exclamation-circle"></i> Errors
+                </button>
+                <button class="btn btn-secondary btn-sm log-filter" data-filter="warn" style="justify-content: center; color: #f59e0b;">
+                    <i class="fas fa-exclamation-triangle"></i> Warnings
+                </button>
+                <button class="btn btn-secondary btn-sm log-filter" data-filter="info" style="justify-content: center; color: #3b82f6;">
+                    <i class="fas fa-info-circle"></i> Info
+                </button>
+            </div>
+
+            <div style="background: #0a0a0f; border-radius: 12px; padding: 16px; max-height: 500px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;" class="scrollbar-custom" id="log-output">
+                <div style="color: var(--text-muted);">Select a log file to view...</div>
+            </div>
+
+            <div class="card" style="margin-top: 20px; background: var(--bg-secondary);">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-robot" style="margin-right: 8px;"></i> Crash Analyzer</div>
+                </div>
+                <div id="crash-analysis" style="color: var(--text-secondary);">
+                    <p>No crashes detected. If errors are found, the analyzer will suggest fixes here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="templates-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Template Manager</div>
+                <button onclick="openModal('import-template-modal')" class="btn btn-primary btn-sm">
+                    <i class="fab fa-github"></i> Import from GitHub
+                </button>
+            </div>
+            
+            <div class="grid-2" style="gap: 20px; margin-bottom: 24px;">
+                <div style="background: var(--bg-secondary); padding: 24px; border-radius: 12px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+                        <i class="fab fa-github" style="margin-right: 8px;"></i> Clone from GitHub
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                        Import server templates directly from GitHub repositories
+                    </p>
+                    <input type="text" class="input" placeholder="https://github.com/user/repo" id="github-url" style="margin-bottom: 12px;">
+                    <button onclick="cloneTemplate()" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                        <i class="fas fa-download"></i> Clone Template
+                    </button>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 24px; border-radius: 12px;">
+                    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+                        <i class="fas fa-save" style="margin-right: 8px;"></i> Save as Template
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                        Save your current server configuration as a reusable template
+                    </p>
+                    <input type="text" class="input" placeholder="Template name" id="template-name" style="margin-bottom: 12px;">
+                    <button onclick="saveTemplate()" class="btn btn-secondary" style="width: 100%; justify-content: center;">
+                        <i class="fas fa-save"></i> Save Template
+                    </button>
+                </div>
+            </div>
+
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Saved Templates</h3>
+            <div id="templates-list" class="grid-3">
+                <div class="empty-state" style="grid-column: 1 / -1; padding: 40px;">
+                    <div class="empty-state-icon"><i class="fas fa-box-open"></i></div>
+                    <div class="empty-state-title">No templates saved</div>
+                    <div class="empty-state-text">Clone from GitHub or save your current server as a template</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="backups-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Backup Manager</div>
+                <button onclick="createBackup()" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create Backup
+                </button>
+            </div>
+
+            <div class="grid-4" style="margin-bottom: 24px;">
+                <button onclick="createBackup('full')" class="btn btn-secondary" style="flex-direction: column; padding: 20px; height: auto;">
+                    <i class="fas fa-server" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <span>Full Server</span>
+                </button>
+                <button onclick="createBackup('world')" class="btn btn-secondary" style="flex-direction: column; padding: 20px; height: auto;">
+                    <i class="fas fa-globe" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <span>World Only</span>
+                </button>
+                <button onclick="createBackup('plugins')" class="btn btn-secondary" style="flex-direction: column; padding: 20px; height: auto;">
+                    <i class="fas fa-puzzle-piece" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <span>Plugins Only</span>
+                </button>
+                <button onclick="createBackup('config')" class="btn btn-secondary" style="flex-direction: column; padding: 20px; height: auto;">
+                    <i class="fas fa-cog" style="font-size: 24px; margin-bottom: 8px;"></i>
+                    <span>Configs Only</span>
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Backup Name</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backups-table">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <i class="fas fa-archive" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                                No backups created yet
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <div class="card-title">Backup Settings</div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Auto-delete backups older than</label>
+                    <select class="select" id="backup-retention">
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="never">Never</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Scheduled Backups</label>
+                    <select class="select" id="backup-schedule">
+                        <option value="disabled">Disabled</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scheduler-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Task Scheduler</div>
+                <button onclick="openModal('create-task-modal')" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Create Task
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Task Name</th>
+                            <th>Type</th>
+                            <th>Schedule</th>
+                            <th>Last Run</th>
+                            <th>Next Run</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-table">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <i class="fas fa-clock" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                                No scheduled tasks
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <div class="card-title">Quick Tasks</div>
+            </div>
+            <div class="grid-3">
+                <div class="server-card" style="cursor: pointer;" onclick="createQuickTask('restart')">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="stat-card-icon orange" style="width: 40px; height: 40px; font-size: 16px;">
+                            <i class="fas fa-redo"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600;">Auto Restart</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">Schedule automatic restarts</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="server-card" style="cursor: pointer;" onclick="createQuickTask('backup')">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="stat-card-icon blue" style="width: 40px; height: 40px; font-size: 16px;">
+                            <i class="fas fa-archive"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600;">Auto Backup</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">Schedule automatic backups</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="server-card" style="cursor: pointer;" onclick="createQuickTask('command')">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="stat-card-icon green" style="width: 40px; height: 40px; font-size: 16px;">
+                            <i class="fas fa-terminal"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600;">Run Command</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">Execute commands on schedule</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notifications-tab" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Notification Center</div>
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="markAllRead()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-check-double"></i> Mark All Read
+                    </button>
+                    <button onclick="clearNotifications()" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                </div>
+            </div>
+
+            <div id="notifications-list">
+                <div class="empty-state" style="padding: 60px;">
+                    <div class="empty-state-icon"><i class="fas fa-bell-slash"></i></div>
+                    <div class="empty-state-title">No notifications</div>
+                    <div class="empty-state-text">You're all caught up!</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <div class="card-title">Notification Settings</div>
+            </div>
+            <div class="grid-2">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-server-start" checked>
+                    <span>Server Start/Stop</span>
+                </label>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-crashes" checked>
+                    <span>Crash Detection</span>
+                </label>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-backups" checked>
+                    <span>Backup Complete</span>
+                </label>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-players" checked>
+                    <span>Player Join/Leave</span>
+                </label>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-plugins">
+                    <span>Plugin Errors</span>
+                </label>
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-tasks" checked>
+                    <span>Task Execution</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Select a Server</div>
+            <a href="/dashboard" class="btn btn-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-server"></i></div>
+            <div class="empty-state-title">No server selected</div>
+            <div class="empty-state-text">Go to Dashboard and select a server to manage</div>
+            <a href="/dashboard" class="btn btn-primary">
+                <i class="fas fa-home"></i> Go to Dashboard
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal-overlay" id="create-world-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Create New World</div>
+            <button class="modal-close" onclick="closeModal('create-world-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">World Name</label>
+                <input type="text" class="input" id="new-world-name" placeholder="my_world">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Seed (optional)</label>
+                <input type="text" class="input" id="new-world-seed" placeholder="Leave empty for random">
+            </div>
+            <div class="form-group">
+                <label class="form-label">World Type</label>
+                <select class="select" id="new-world-type">
+                    <option value="normal">Normal</option>
+                    <option value="flat">Superflat</option>
+                    <option value="amplified">Amplified</option>
+                    <option value="large_biomes">Large Biomes</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('create-world-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createWorld()">
+                <i class="fas fa-plus"></i> Create World
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="create-task-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Create Scheduled Task</div>
+            <button class="modal-close" onclick="closeModal('create-task-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Task Name</label>
+                <input type="text" class="input" id="task-name" placeholder="My Task">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Task Type</label>
+                <select class="select" id="task-type">
+                    <option value="restart">Restart Server</option>
+                    <option value="command">Run Command</option>
+                    <option value="backup">Create Backup</option>
+                    <option value="script">Execute Script</option>
+                    <option value="notify">Send Notification</option>
+                </select>
+            </div>
+            <div class="form-group" id="task-command-group">
+                <label class="form-label">Command</label>
+                <input type="text" class="input" id="task-command" placeholder="say Hello World">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Schedule</label>
+                <select class="select" id="task-schedule">
+                    <option value="once">One Time</option>
+                    <option value="interval">Every X Minutes</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="on_start">On Server Start</option>
+                    <option value="on_stop">On Server Stop</option>
+                    <option value="on_crash">On Crash</option>
+                </select>
+            </div>
+            <div class="form-group" id="task-time-group">
+                <label class="form-label">Time</label>
+                <input type="time" class="input" id="task-time" value="00:00">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('create-task-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createTask()">
+                <i class="fas fa-plus"></i> Create Task
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="import-template-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Import Template from GitHub</div>
+            <button class="modal-close" onclick="closeModal('import-template-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">GitHub Repository URL</label>
+                <input type="text" class="input" id="import-github-url" placeholder="https://github.com/user/server-template">
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Server Name</label>
+                <input type="text" class="input" id="import-server-name" placeholder="my-new-server">
+            </div>
+            <div style="background: var(--bg-secondary); padding: 16px; border-radius: 12px; margin-top: 16px;">
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">What will be imported:</h4>
+                <ul style="font-size: 13px; color: var(--text-secondary); padding-left: 20px;">
+                    <li>Configs & server.properties</li>
+                    <li>Plugins folder</li>
+                    <li>Mods folder</li>
+                    <li>World files</li>
+                    <li>Scripts</li>
+                </ul>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('import-template-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="importTemplate()">
+                <i class="fab fa-github"></i> Import Template
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="file-editor-modal">
+    <div class="modal" style="max-width: 800px;">
+        <div class="modal-header">
+            <div class="modal-title" id="editor-filename">Edit File</div>
+            <button class="modal-close" onclick="closeModal('file-editor-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="padding: 0;">
+            <textarea id="file-editor" style="width: 100%; height: 400px; background: #0a0a0f; border: none; color: var(--text-primary); padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; resize: none;"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('file-editor-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveFile()">
+                <i class="fas fa-save"></i> Save
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const serverName = '{{ server.name if server else "" }}';
+    let currentPath = '/';
+    let selectedModloader = null;
+    let selectedMods = [];
+    let pendingAction = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initTabs('.server-page');
+        if (serverName) {
+            loadFiles();
+            loadPlugins();
+            loadInstalledPlugins();
+            loadPlayers();
+            loadWorlds();
+            loadBackups();
+            loadTasks();
+            loadNotifications();
+            refreshConsole();
+        }
+
+        document.querySelectorAll('.modloader-option').forEach(opt => {
+            opt.addEventListener('click', function() {
+                document.querySelectorAll('.modloader-option').forEach(o => o.style.borderColor = 'transparent');
+                this.style.borderColor = 'var(--accent-primary)';
+                selectedModloader = this.dataset.loader;
+            });
+        });
+
+        document.querySelectorAll('.log-filter').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.log-filter').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                filterLogs(this.dataset.filter);
+            });
+        });
+
+        const playerSearch = document.getElementById('player-search');
+        if (playerSearch) {
+            playerSearch.addEventListener('keyup', function() {
+                searchPlayers();
+            });
+        }
+
+        // Initial load and live refresh players every 5 seconds
+        if (serverName) { loadPlayers(); }
+        setInterval(() => { if (serverName) loadPlayers(); }, 5000);
+    });
+
+    function startServer() {
+        showNotification('Starting server...', 'info');
+        makeRequest(`/api/server/${serverName}/start`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    function stopServer() {
+        showNotification('Stopping server...', 'info');
+        makeRequest(`/api/server/${serverName}/stop`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    function restartServer() {
+        showNotification('Restarting server...', 'info');
+        makeRequest(`/api/server/${serverName}/restart`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    function sendCommand() {
+        const input = document.getElementById('console-input');
+        const command = input.value.trim();
+        if (!command) return;
+
+        const output = document.getElementById('console-output');
+        output.innerHTML += `<div class="line" style="color: #60a5fa;">> ${command}</div>`;
+        
+        makeRequest(`/api/server/${serverName}/command`, {
+            method: 'POST',
+            body: JSON.stringify({ command: command })
+        }).then(data => {
+            if (!data.success) {
+                output.innerHTML += `<div class="line error">Error: ${data.message}</div>`;
+            }
+        });
+        
+        input.value = '';
+        output.scrollTop = output.scrollHeight;
+    }
+
+    function clearConsole() {
+        document.getElementById('console-output').innerHTML = '<div class="line info">[INFO] Console cleared</div>';
+    }
+
+    function refreshConsole() {
+        if (!serverName) return;
+        makeRequest(`/api/server/${serverName}/console`)
+            .then(data => {
+                if (data.success && data.output) {
+                    const output = document.getElementById('console-output');
+                    const lines = data.output.split('\n').slice(-100);
+                    output.innerHTML = lines.map(line => {
+                        let className = 'line';
+                        if (line.includes('ERROR') || line.includes('Exception')) className += ' error';
+                        else if (line.includes('WARN')) className += ' warn';
+                        else if (line.includes('INFO')) className += ' info';
+                        return `<div class="${className}">${line}</div>`;
+                    }).join('');
+                    output.scrollTop = output.scrollHeight;
+                }
+            });
+    }
+
+    let allFiles = [];
+    let selectedFiles = [];
+    let clipboardFiles = [];
+    let clipboardAction = null;
+
+    function loadFiles() {
+        const table = document.getElementById('files-table');
+        makeRequest(`/api/server/${serverName}/files?path=${encodeURIComponent(currentPath)}`)
+            .then(data => {
+                if (data.success && data.files) {
+                    allFiles = data.files;
+                    document.getElementById('current-path').textContent = currentPath;
+                    renderFilesTable(data.files);
+                }
+            });
+    }
+
+    function renderFilesTable(files) {
+        const table = document.getElementById('files-table');
+        if (files.length === 0) {
+            table.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">Empty folder</td></tr>`;
+            return;
+        }
+        table.innerHTML = files.map(file => `
+            <tr draggable="true" ondragstart="dragStart(event, '${file.name}')" ondragover="dragOver(event)" ondrop="drop(event, '${file.name}', '${file.type}')">
+                <td><input type="checkbox" class="checkbox file-checkbox" data-name="${file.name}" onchange="updateSelection()"></td>
+                <td style="cursor: pointer;" onclick="${file.type === 'directory' ? `navigateTo('${file.name}')` : `editFile('${file.name}')`}">
+                    <i class="fas fa-${file.type === 'directory' ? 'folder' : getFileIcon(file.name)}" style="margin-right: 8px; color: ${file.type === 'directory' ? '#fbbf24' : getFileColor(file.name)};"></i>
+                    ${file.name}
+                </td>
+                <td>${formatBytes(file.size)}</td>
+                <td>${file.modified}</td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        ${file.type === 'file' ? `<button class="btn btn-secondary btn-sm" onclick="editFile('${file.name}')" title="Edit"><i class="fas fa-edit"></i></button>` : ''}
+                        ${file.type === 'file' ? `<button class="btn btn-secondary btn-sm" onclick="downloadFile('${file.name}')" title="Download"><i class="fas fa-download"></i></button>` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="copyFile('${file.name}')" title="Copy"><i class="fas fa-copy"></i></button>
+                        <button class="btn btn-secondary btn-sm" onclick="renameFile('${file.name}')" title="Rename"><i class="fas fa-pen"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteFile('${file.name}')" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const iconMap = {
+            'yml': 'file-code', 'yaml': 'file-code', 'json': 'file-code', 'properties': 'file-alt',
+            'jar': 'file-archive', 'zip': 'file-archive', 'gz': 'file-archive', 'tar': 'file-archive',
+            'log': 'file-alt', 'txt': 'file-alt', 'md': 'file-alt',
+            'png': 'file-image', 'jpg': 'file-image', 'gif': 'file-image',
+            'bat': 'terminal', 'sh': 'terminal', 'cmd': 'terminal'
+        };
+        return iconMap[ext] || 'file';
+    }
+
+    function getFileColor(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const colorMap = {
+            'yml': '#22c55e', 'yaml': '#22c55e', 'json': '#f59e0b', 'properties': '#3b82f6',
+            'jar': '#7c3aed', 'zip': '#7c3aed', 'log': '#6b7280', 'txt': '#6b7280'
+        };
+        return colorMap[ext] || 'var(--text-muted)';
+    }
+
+    function dragStart(e, filename) {
+        e.dataTransfer.setData('text/plain', filename);
+    }
+
+    function dragOver(e) {
+        e.preventDefault();
+        e.currentTarget.style.background = 'var(--bg-hover)';
+    }
+
+    function drop(e, targetName, targetType) {
+        e.preventDefault();
+        e.currentTarget.style.background = '';
+        const sourceFile = e.dataTransfer.getData('text/plain');
+        if (sourceFile === targetName) return;
+        
+        if (targetType === 'directory') {
+            const sourcePath = currentPath === '/' ? sourceFile : `${currentPath}/${sourceFile}`;
+            const destPath = currentPath === '/' ? `${targetName}/${sourceFile}` : `${currentPath}/${targetName}/${sourceFile}`;
+            moveFile(sourcePath, destPath);
+        }
+    }
+
+    function updateSelection() {
+        selectedFiles = Array.from(document.querySelectorAll('.file-checkbox:checked'))
+            .map(cb => cb.dataset.name);
+    }
+
+    function copyFile(filename) {
+        const filepath = currentPath === '/' ? filename : `${currentPath}/${filename}`;
+        clipboardFiles = [filepath];
+        clipboardAction = 'copy';
+        showNotification(`Copied "${filename}" to clipboard`, 'info');
+    }
+
+    function cutFile(filename) {
+        const filepath = currentPath === '/' ? filename : `${currentPath}/${filename}`;
+        clipboardFiles = [filepath];
+        clipboardAction = 'cut';
+        showNotification(`Cut "${filename}" to clipboard`, 'info');
+    }
+
+    function pasteFiles() {
+        if (!clipboardFiles.length) {
+            showNotification('Nothing to paste', 'warning');
+            return;
+        }
+
+        clipboardFiles.forEach(sourcePath => {
+            const filename = sourcePath.split('/').pop();
+            const destPath = currentPath === '/' ? filename : `${currentPath}/${filename}`;
+            
+            if (clipboardAction === 'copy') {
+                makeRequest(`/api/server/${serverName}/file/copy`, {
+                    method: 'POST',
+                    body: JSON.stringify({ sourcePath, destPath })
+                }).then(data => {
+                    showNotification(data.message, data.success ? 'success' : 'error');
+                    if (data.success) loadFiles();
+                });
+            } else {
+                moveFile(sourcePath, destPath);
+            }
+        });
+        
+        if (clipboardAction === 'cut') {
+            clipboardFiles = [];
+            clipboardAction = null;
+        }
+    }
+
+    function moveFile(sourcePath, destPath) {
+        makeRequest(`/api/server/${serverName}/file/move`, {
+            method: 'POST',
+            body: JSON.stringify({ sourcePath, destPath })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadFiles();
+        });
+    }
+
+    function downloadFile(filename) {
+        const filepath = currentPath === '/' ? filename : `${currentPath}/${filename}`;
+        window.open(`/api/server/${serverName}/download?path=${encodeURIComponent(filepath)}`, '_blank');
+    }
+
+    function searchFiles() {
+        const query = document.getElementById('file-search-input')?.value.toLowerCase() || '';
+        if (!query) {
+            renderFilesTable(allFiles);
+            return;
+        }
+        const filtered = allFiles.filter(f => f.name.toLowerCase().includes(query));
+        renderFilesTable(filtered);
+    }
+
+    function navigateTo(folder) {
+        currentPath = currentPath === '/' ? '/' + folder : currentPath + '/' + folder;
+        loadFiles();
+    }
+
+    function navigateUp() {
+        if (currentPath === '/') return;
+        const parts = currentPath.split('/').filter(p => p);
+        parts.pop();
+        currentPath = '/' + parts.join('/');
+        if (currentPath === '/') currentPath = '/';
+        loadFiles();
+    }
+
+    function navigateRoot() {
+        currentPath = '/';
+        loadFiles();
+    }
+
+    function editFile(filename) {
+        const filepath = currentPath === '/' ? filename : currentPath + '/' + filename;
+        
+        // Check if file is editable (text file)
+        const ext = filename.split('.').pop().toLowerCase();
+        const textExtensions = ['txt', 'yml', 'yaml', 'json', 'properties', 'cfg', 'conf', 'ini', 'log', 'md', 'xml', 'sh', 'bat', 'cmd', 'toml'];
+        
+        if (!textExtensions.includes(ext) && ext !== filename) {
+            showNotification('This file type cannot be edited', 'warning');
+            return;
+        }
+        
+        makeRequest(`/api/server/${serverName}/file/content?path=${encodeURIComponent(filepath)}`)
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('editor-filename').textContent = filename;
+                    document.getElementById('file-editor').value = data.content;
+                    document.getElementById('file-editor').dataset.path = filepath;
+                    openModal('file-editor-modal');
+                } else {
+                    showNotification(data.message || 'Failed to load file', 'error');
+                }
+            })
+            .catch(err => {
+                showNotification('Error loading file: ' + err.message, 'error');
+            });
+    }
+
+    function saveFile() {
+        const content = document.getElementById('file-editor').value;
+        const path = document.getElementById('file-editor').dataset.path;
+        
+        if (!path) {
+            showNotification('No file path specified', 'error');
+            return;
+        }
+        
+        makeRequest(`/api/server/${serverName}/file/save`, {
+            method: 'POST',
+            body: JSON.stringify({ path: path, content: content })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                closeModal('file-editor-modal');
+                loadFiles();
+            }
+        }).catch(err => {
+            showNotification('Error saving file: ' + err.message, 'error');
+        });
+    }
+
+    function deleteFile(filename) {
+        if (!confirm(`Delete ${filename}?`)) return;
+        const filepath = currentPath === '/' ? filename : currentPath + '/' + filename;
+        makeRequest(`/api/server/${serverName}/file?path=${encodeURIComponent(filepath)}`, {
+            method: 'DELETE'
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadFiles();
+        });
+    }
+
+    function refreshFiles() {
+        loadFiles();
+        showNotification('Files refreshed', 'info');
+    }
+
+    function loadPlugins() {
+        makeRequest('/api/plugins/popular')
+            .then(data => {
+                const marketplace = document.getElementById('plugin-marketplace');
+                if (data.success && data.plugins) {
+                    marketplace.innerHTML = data.plugins.map(p => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 600;">${p.name}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">${p.downloads || 0} downloads</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="installPlugin('${p.id}')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    marketplace.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Unable to load plugins</div>';
+                }
+            });
+    }
+
+    function searchPlugins() {
+        const query = document.getElementById('plugin-search').value;
+        if (query.length < 2) return;
+        
+        makeRequest(`/api/plugins/search?query=${encodeURIComponent(query)}`)
+            .then(data => {
+                const marketplace = document.getElementById('plugin-marketplace');
+                if (data.success && data.plugins) {
+                    marketplace.innerHTML = data.plugins.map(p => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 600;">${p.name}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">${p.downloads || 0} downloads</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="installPlugin('${p.id}')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            });
+    }
+
+    function installPlugin(pluginId) {
+        showNotification('Installing plugin...', 'info');
+        makeRequest(`/api/server/${serverName}/plugins/install`, {
+            method: 'POST',
+            body: JSON.stringify({ plugin_id: pluginId })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) refreshPlugins();
+        });
+    }
+
+    function refreshPlugins() {
+        loadInstalledPlugins();
+        loadPlugins();
+        showNotification('Plugins refreshed', 'info');
+    }
+
+    function loadInstalledPlugins() {
+        makeRequest(`/api/server/${serverName}/plugins`)
+            .then(data => {
+                const container = document.getElementById('installed-plugins');
+                if (data.success && data.plugins && data.plugins.length > 0) {
+                    container.innerHTML = data.plugins.map(p => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px;">
+                            <div>
+                                <div style="font-weight: 500; font-size: 14px;">${p.name}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${p.size}</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-secondary btn-sm" onclick="renamePlugin('${p.filename}')" title="Rename"><i class="fas fa-pen"></i></button>
+                                <button class="btn btn-danger btn-sm" onclick="deletePlugin('${p.name}')" title="Delete"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state" style="padding: 40px;"><div class="empty-state-icon"><i class="fas fa-puzzle-piece"></i></div><div class="empty-state-title">No plugins installed</div><div class="empty-state-text">Browse and install plugins from the marketplace</div></div>';
+                }
+            });
+    }
+
+    function renamePlugin(filename) {
+        const base = filename.endsWith('.jar') ? filename.slice(0, -4) : filename;
+        const newName = prompt('Enter new name:', base);
+        if (!newName || newName === base) return;
+        makeRequest(`/api/server/${serverName}/plugins/rename`, {
+            method: 'POST',
+            body: JSON.stringify({ plugin_name: base, new_name: newName })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadInstalledPlugins();
+        });
+    }
+
+    function deletePlugin(pluginName) {
+        if (!confirm(`Delete plugin "${pluginName}"?`)) return;
+        makeRequest(`/api/server/${serverName}/plugins/delete`, {
+            method: 'POST',
+            body: JSON.stringify({ plugin_name: pluginName })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadInstalledPlugins();
+        });
+    }
+
+    let allPlayers = [];
+
+    function loadPlayers() {
+        makeRequest(`/api/server/${serverName}/players`)
+            .then(data => {
+                const table = document.getElementById('players-table');
+                const onlineEl = document.getElementById('online-players-count');
+                const totalEl = document.getElementById('total-players-count');
+                if (data.success && Array.isArray(data.players)) {
+                    allPlayers = data.players;
+                    const online = data.players.filter(p => (p.status || '').toLowerCase() === 'online').length;
+                    onlineEl.textContent = online;
+                    totalEl.textContent = data.players.length;
+                    renderPlayersTable(data.players);
+                }
+            });
+    }
+
+    function renderPlayersTable(players) {
+        const table = document.getElementById('players-table');
+        if (!players || players.length === 0) {
+            table.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;"><i class="fas fa-users" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>No players have joined yet</td></tr>`;
+            return;
+        }
+        table.innerHTML = players.map(p => `
+            <tr>
+                <td>${p.name || p.player || ''}</td>
+                <td>${p.uuid || '--'}</td>
+                <td><span class="status-badge status-${(p.status || '').toLowerCase() === 'online' ? 'online' : 'offline'}">${p.status || 'Offline'}</span></td>
+                <td>${p.playtime || '--'}</td>
+                <td>${p.last_seen || '--'}</td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-danger btn-sm" onclick="kickPlayer('${(p.name || p.player || '').replace(/'/g, "\\'")}')" title="Kick"><i class="fas fa-user-slash"></i></button>
+                        <button class="btn btn-danger btn-sm" onclick="banPlayer('${(p.name || p.player || '').replace(/'/g, "\\'")}')" title="Ban"><i class="fas fa-ban"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function searchPlayers() {
+        const q = (document.getElementById('player-search')?.value || '').toLowerCase();
+        if (!q) { renderPlayersTable(allPlayers); return; }
+        const filtered = allPlayers.filter(p => ((p.name || p.player || '').toLowerCase().includes(q)));
+        renderPlayersTable(filtered);
+    }
+
+    function refreshPlayers() {
+        loadPlayers();
+        showNotification('Players refreshed', 'info');
+    }
+
+    function kickPlayer(player) {
+        makeRequest(`/api/server/${serverName}/player/action`, {
+            method: 'POST',
+            body: JSON.stringify({ player, action: 'kick', reason: 'Removed by panel' })
+        }).then(data => { showNotification(data.success ? 'Player kicked' : (data.message || 'Kick failed'), data.success ? 'success' : 'error'); loadPlayers(); });
+    }
+
+    function banPlayer(player) {
+        makeRequest(`/api/server/${serverName}/player/action`, {
+            method: 'POST',
+            body: JSON.stringify({ player, action: 'ban' })
+        }).then(data => { showNotification(data.success ? 'Player banned' : (data.message || 'Ban failed'), data.success ? 'success' : 'error'); loadPlayers(); });
+    }
+
+    function openPlayerAction(action) {
+        pendingAction = action === 'whitelist' ? 'whitelist_add' : action;
+        document.getElementById('player-action-type').value = pendingAction;
+        document.getElementById('player-action-name').value = '';
+        document.getElementById('player-action-reason').value = '';
+        document.getElementById('player-action-reason-group').style.display = pendingAction === 'kick' ? 'block' : 'none';
+        openModal('player-action-modal');
+    }
+
+    function submitPlayerAction() {
+        const action = document.getElementById('player-action-type').value;
+        const player = document.getElementById('player-action-name').value.trim();
+        const reason = document.getElementById('player-action-reason').value.trim();
+        if (!player) { showNotification('Enter player name', 'error'); return; }
+        const body = { player, action };
+        if (action === 'kick') body.reason = reason || 'Removed by panel';
+        makeRequest(`/api/server/${serverName}/player/action`, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        }).then(data => {
+            closeModal('player-action-modal');
+            showNotification(data.success ? 'Action sent' : (data.message || 'Action failed'), data.success ? 'success' : 'error');
+            loadPlayers();
+        });
+    }
+
+    function loadWorlds() {
+        makeRequest(`/api/server/${serverName}/worlds`)
+            .then(data => {
+                const list = document.getElementById('worlds-list');
+                const empty = document.getElementById('worlds-empty');
+                
+                if (data.success && data.worlds && data.worlds.length > 0) {
+                    empty.style.display = 'none';
+                    list.innerHTML = data.worlds.map(w => `
+                        <div class="server-card" data-world="${w.name}">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                                <div>
+                                    <h3 style="font-weight: 600; margin-bottom: 4px;">${w.name}</h3>
+                                    <p style="color: var(--text-muted); font-size: 13px;">${w.type || 'Normal'}</p>
+                                </div>
+                                ${w.isDefault ? '<span class="status-badge status-online" style="font-size: 11px;">Default</span>' : ''}
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                                <div style="flex: 1; background: var(--bg-secondary); padding: 10px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Size</div>
+                                    <div style="font-weight: 600;">${formatBytes(w.size || 0)}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center;" onclick="backupWorld('${w.name}')">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center;" onclick="resetWorld('${w.name}')">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" style="flex: 1; justify-content: center;" onclick="deleteWorld('${w.name}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '';
+                    empty.style.display = 'block';
+                }
+            });
+    }
+
+    function createWorld() {
+        const name = document.getElementById('new-world-name').value;
+        const seed = document.getElementById('new-world-seed').value;
+        const type = document.getElementById('new-world-type').value;
+        
+        if (!name) {
+            showNotification('Please enter a world name', 'error');
+            return;
+        }
+        
+        makeRequest(`/api/server/${serverName}/worlds`, {
+            method: 'POST',
+            body: JSON.stringify({ name, seed, type })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                closeModal('create-world-modal');
+                loadWorlds();
+            }
+        });
+    }
+
+    function backupWorld(name) {
+        showNotification(`Creating backup of ${name}...`, 'info');
+        makeRequest(`/api/server/${serverName}/worlds/${name}/backup`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    function deleteWorld(name) {
+        if (!confirm(`Delete world "${name}"? This cannot be undone!`)) return;
+        makeRequest(`/api/server/${serverName}/worlds/${name}`, { method: 'DELETE' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+                if (data.success) loadWorlds();
+            });
+    }
+
+    function loadBackups() {
+        makeRequest(`/api/server/${serverName}/backups`)
+            .then(data => {
+                const table = document.getElementById('backups-table');
+                if (data.success && data.backups && data.backups.length > 0) {
+                    table.innerHTML = data.backups.map(b => `
+                        <tr>
+                            <td>${b.name}</td>
+                            <td><span class="status-badge status-${b.type === 'full' ? 'online' : b.type === 'world' ? 'starting' : 'offline'}">${b.type}</span></td>
+                            <td>${formatBytes(b.size)}</td>
+                            <td>${b.created}</td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary btn-sm" onclick="restoreBackup('${b.name}')" title="Restore">
+                                        <i class="fas fa-undo"></i> Restore
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="downloadBackup('${b.name}')" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteBackup('${b.name}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                    
+                    updateRecentBackups(data.backups.slice(0, 5));
+                } else {
+                    table.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <i class="fas fa-archive" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                        No backups created yet
+                    </td></tr>`;
+                }
+            });
+    }
+
+    function updateRecentBackups(backups) {
+        const container = document.getElementById('recent-backups-list');
+        if (!container) return;
+        
+        if (backups.length === 0) {
+            container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">No recent backups</div>';
+            return;
+        }
+        
+        container.innerHTML = backups.map(b => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 8px;">
+                <div>
+                    <div style="font-weight: 500; font-size: 14px;">${b.name}</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">${b.created} - ${formatBytes(b.size)}</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="restoreBackup('${b.name}')">
+                    <i class="fas fa-undo"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    function createBackup(type = 'full') {
+        showNotification(`Creating ${type} backup...`, 'info');
+        makeRequest(`/api/server/${serverName}/backups`, {
+            method: 'POST',
+            body: JSON.stringify({ type })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadBackups();
+        });
+    }
+
+    function downloadBackup(backupName) {
+        window.open(`/api/server/${serverName}/backups/${encodeURIComponent(backupName)}/download`, '_blank');
+        showNotification('Download started...', 'info');
+    }
+
+    function restoreBackup(backupName) {
+        if (!confirm(`Are you sure you want to restore backup "${backupName}"? This will overwrite current server files.`)) return;
+        
+        showNotification('Restoring backup...', 'info');
+        makeRequest(`/api/server/${serverName}/backups/${encodeURIComponent(backupName)}/restore`, {
+            method: 'POST'
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+        });
+    }
+
+    function deleteBackup(backupName) {
+        if (!confirm(`Delete backup "${backupName}"?`)) return;
+        
+        makeRequest(`/api/server/${serverName}/backups/${encodeURIComponent(backupName)}`, {
+            method: 'DELETE'
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadBackups();
+        });
+    }
+
+    function cleanupOldBackups() {
+        const days = document.getElementById('backup-retention').value;
+        makeRequest(`/api/server/${serverName}/backups/auto-cleanup`, {
+            method: 'POST',
+            body: JSON.stringify({ days })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadBackups();
+        });
+    }
+
+    function createQuickTask(type) {
+        let taskConfig = {};
+        
+        switch(type) {
+            case 'restart':
+                taskConfig = { name: 'Auto Restart', type: 'restart', schedule: 'daily', time: '04:00' };
+                break;
+            case 'backup':
+                taskConfig = { name: 'Auto Backup', type: 'backup', schedule: 'daily', time: '03:00' };
+                break;
+            case 'command':
+                const command = prompt('Enter the command to run:');
+                if (!command) return;
+                taskConfig = { name: 'Scheduled Command', type: 'command', action: command, schedule: 'daily', time: '12:00' };
+                break;
+            default:
+                return;
+        }
+        
+        makeRequest(`/api/server/${serverName}/tasks`, {
+            method: 'POST',
+            body: JSON.stringify(taskConfig)
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadTasks();
+        });
+    }
+
+    function renameFile(filename) {
+        const newName = prompt(`Enter new name for "${filename}":`, filename);
+        if (!newName || newName === filename) return;
+        
+        const oldPath = currentPath === '/' ? filename : `${currentPath}/${filename}`;
+        
+        makeRequest(`/api/server/${serverName}/file/rename`, {
+            method: 'POST',
+            body: JSON.stringify({ oldPath, newName })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadFiles();
+        });
+    }
+
+    function createFolder() {
+        const folderName = document.getElementById('new-folder-name')?.value || prompt('Enter folder name:');
+        if (!folderName) return;
+        
+        const folderPath = currentPath === '/' ? folderName : `${currentPath}/${folderName}`;
+        
+        makeRequest(`/api/server/${serverName}/file/mkdir`, {
+            method: 'POST',
+            body: JSON.stringify({ path: folderPath })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                closeModal('create-folder-modal');
+                loadFiles();
+            }
+        });
+    }
+
+    function deleteSelectedFiles() {
+        if (selectedFiles.length === 0) {
+            showNotification('No files selected', 'warning');
+            return;
+        }
+        
+        if (!confirm(`Delete ${selectedFiles.length} selected item(s)?`)) return;
+        
+        Promise.all(selectedFiles.map(filename => {
+            const filepath = currentPath === '/' ? filename : `${currentPath}/${filename}`;
+            return makeRequest(`/api/server/${serverName}/file/delete`, {
+                method: 'POST',
+                body: JSON.stringify({ path: filepath })
+            });
+        })).then(() => {
+            showNotification('Selected items deleted', 'success');
+            loadFiles();
+        });
+    }
+
+    function selectAllFiles() {
+        const selectAllCheckbox = document.getElementById('select-all-files');
+        const checkboxes = document.querySelectorAll('.file-checkbox');
+        checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+        updateSelection();
+    }
+
+    function handleFileDrop(event) {
+        event.preventDefault();
+        event.currentTarget.style.background = '';
+        
+        const files = event.dataTransfer.files;
+        if (files.length === 0) return;
+        
+        Array.from(files).forEach(file => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', currentPath);
+            
+            fetch(`/api/server/${serverName}/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+                if (data.success) loadFiles();
+            });
+        });
+    }
+
+    function refreshFiles() {
+        loadFiles();
+        showNotification('Files refreshed', 'info');
+    }
+
+    function updateLiveStats() {
+        makeRequest(`/api/server/${serverName}/stats`)
+            .then(data => {
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    document.getElementById('files-cpu-stat').textContent = stats.cpu_percent ? `${stats.cpu_percent}%` : '0%';
+                    document.getElementById('files-ram-stat').textContent = stats.ram_mb ? `${stats.ram_mb} MB` : '0 MB';
+                    document.getElementById('files-tps-stat').textContent = stats.tps || '20.0';
+                    document.getElementById('files-uptime-stat').textContent = stats.uptime || '0h';
+                }
+            });
+    }
+
+    setInterval(updateLiveStats, 5000);
+    setTimeout(updateLiveStats, 1000);
+
+    function loadTasks() {
+        makeRequest(`/api/server/${serverName}/tasks`)
+            .then(data => {
+                const table = document.getElementById('tasks-table');
+                if (data.success && data.tasks && data.tasks.length > 0) {
+                    table.innerHTML = data.tasks.map(t => `
+                        <tr>
+                            <td>${t.name}</td>
+                            <td>${t.type}</td>
+                            <td>${t.schedule}</td>
+                            <td>${t.lastRun || 'Never'}</td>
+                            <td>${t.nextRun || '--'}</td>
+                            <td>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" class="checkbox" ${t.enabled ? 'checked' : ''} onchange="toggleTask('${t.id}')">
+                                </label>
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            });
+    }
+
+    function createTask() {
+        const name = document.getElementById('task-name').value;
+        const type = document.getElementById('task-type').value;
+        const command = document.getElementById('task-command').value;
+        const schedule = document.getElementById('task-schedule').value;
+        const time = document.getElementById('task-time').value;
+        
+        if (!name) {
+            showNotification('Please enter a task name', 'error');
+            return;
+        }
+        
+        makeRequest(`/api/server/${serverName}/tasks`, {
+            method: 'POST',
+            body: JSON.stringify({ name, type, command, schedule, time })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                closeModal('create-task-modal');
+                loadTasks();
+            }
+        });
+    }
+
+    function loadNotifications() {
+        makeRequest(`/api/server/${serverName}/notifications`)
+            .then(data => {
+                const list = document.getElementById('notifications-list');
+                if (data.success && data.notifications && data.notifications.length > 0) {
+                    list.innerHTML = data.notifications.map(n => `
+                        <div style="display: flex; gap: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; margin-bottom: 12px; ${n.read ? 'opacity: 0.7;' : ''}">
+                            <div class="stat-card-icon ${n.type === 'error' ? 'orange' : n.type === 'success' ? 'green' : 'blue'}" style="width: 40px; height: 40px; font-size: 16px; flex-shrink: 0;">
+                                <i class="fas fa-${n.icon || 'bell'}"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">${n.title}</div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">${n.message}</div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">${formatDate(n.timestamp)}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            });
+    }
+
+    function cloneTemplate() {
+        const url = document.getElementById('github-url').value;
+        if (!url) {
+            showNotification('Please enter a GitHub URL', 'error');
+            return;
+        }
+        
+        showNotification('Cloning template...', 'info');
+        makeRequest(`/api/server/${serverName}/templates/clone`, {
+            method: 'POST',
+            body: JSON.stringify({ url })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+        });
+    }
+
+    function saveTemplate() {
+        const name = document.getElementById('template-name').value;
+        if (!name) {
+            showNotification('Please enter a template name', 'error');
+            return;
+        }
+        
+        makeRequest(`/api/server/${serverName}/templates/save`, {
+            method: 'POST',
+            body: JSON.stringify({ name })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+        });
+    }
+
+    function filterLogs(filter) {
+        const output = document.getElementById('log-output');
+        const lines = output.querySelectorAll('.log-line');
+        lines.forEach(line => {
+            if (filter === 'all') {
+                line.style.display = 'block';
+            } else {
+                line.style.display = line.classList.contains(filter) ? 'block' : 'none';
+            }
+        });
+    }
+
+    function refreshLogs() {
+        const logFile = document.getElementById('log-file-select').value;
+        makeRequest(`/api/server/${serverName}/logs/${logFile}`)
+            .then(data => {
+                if (data.success) {
+                    const output = document.getElementById('log-output');
+                    const lines = data.content.split('\n');
+                    output.innerHTML = lines.map(line => {
+                        let type = '';
+                        if (line.includes('ERROR') || line.includes('Exception')) type = 'error';
+                        else if (line.includes('WARN')) type = 'warn';
+                        else if (line.includes('INFO')) type = 'info';
+                        return `<div class="log-line ${type}" style="color: ${type === 'error' ? '#f87171' : type === 'warn' ? '#fbbf24' : type === 'info' ? '#60a5fa' : 'var(--text-secondary)'}">${line}</div>`;
+                    }).join('');
+                }
+            });
+    }
+
+    socket.on('stats_update', function(data) {
+        if (data.servers && data.servers[serverName]) {
+            const stats = data.servers[serverName];
+            
+            const statusEl = document.getElementById('server-status');
+            statusEl.className = `status-badge status-${stats.status === 'running' ? 'online' : stats.status === 'starting' ? 'starting' : 'offline'}`;
+            statusEl.innerHTML = `<i class="fas fa-circle" style="font-size: 8px;"></i> ${stats.status.charAt(0).toUpperCase() + stats.status.slice(1)}`;
+            
+            document.getElementById('player-stat').textContent = stats.players || 0;
+        }
+        
+        if (data.system) {
+            document.getElementById('cpu-stat').textContent = data.system.cpu.toFixed(1) + '%';
+            document.getElementById('ram-stat').textContent = Math.round(data.system.memory.used / 1024 / 1024) + ' MB';
+        }
+    });
+
+    // Modrinth API Functions
+    function searchModrinthMods() {
+        const query = document.getElementById('modrinth-search').value;
+        const loader = document.getElementById('mod-loader-filter').value;
+        const mcVersion = document.getElementById('mod-mc-version').value;
+        
+        if (!query || query.length < 2) {
+            showNotification('Please enter at least 2 characters to search', 'warning');
+            return;
+        }
+        
+        const results = document.getElementById('modrinth-results');
+        results.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="loading-spinner" style="margin: 0 auto 12px;"></div>Searching...</div>';
+        
+        makeRequest(`/api/modrinth/search?query=${encodeURIComponent(query)}&loader=${loader}&mc_version=${mcVersion}`)
+            .then(data => {
+                if (data.success && data.mods && data.mods.length > 0) {
+                    results.innerHTML = data.mods.map(mod => `
+                        <div style="display: flex; gap: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 8px;">
+                            <img src="${mod.icon_url || 'https://cdn.modrinth.com/placeholder.svg'}" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">${mod.title}</div>
+                                <div style="font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${mod.description || ''}</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                                    <i class="fas fa-download"></i> ${formatNumber(mod.downloads)}
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" onclick="installModrinthMod('${mod.project_id}', '${mod.title.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    results.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">No mods found</div>';
+                }
+            })
+            .catch(err => {
+                results.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Search failed</div>';
+            });
+    }
+
+    function installModrinthMod(projectId, modName) {
+        const loader = document.getElementById('mod-loader-filter').value;
+        const mcVersion = document.getElementById('mod-mc-version').value;
+        
+        showNotification(`Installing ${modName}...`, 'info');
+        
+        makeRequest(`/api/server/${serverName}/mods/install`, {
+            method: 'POST',
+            body: JSON.stringify({ project_id: projectId, loader: loader, mc_version: mcVersion })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadInstalledMods();
+        });
+    }
+
+    function loadInstalledMods() {
+        const container = document.getElementById('installed-mods');
+        makeRequest(`/api/server/${serverName}/mods`)
+            .then(data => {
+                if (data.success && data.mods && data.mods.length > 0) {
+                    container.innerHTML = data.mods.map(mod => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 6px;">
+                            <div>
+                                <div style="font-weight: 500; font-size: 14px;">${mod.name}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${formatBytes(mod.size)}</div>
+                            </div>
+                            <button class="btn btn-danger btn-sm" onclick="deleteMod('${mod.name}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>No mods installed yet</div>';
+                }
+            });
+    }
+
+    function deleteMod(modName) {
+        if (!confirm(`Delete mod "${modName}"?`)) return;
+        
+        makeRequest(`/api/server/${serverName}/mods/delete`, {
+            method: 'POST',
+            body: JSON.stringify({ name: modName })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) loadInstalledMods();
+        });
+    }
+
+    function formatNumber(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    }
+
+    // Version Management Functions
+    let versionData = {};
+
+    function loadVersionOptions() {
+        const software = document.getElementById('version-software-type').value;
+        const select = document.getElementById('version-mc-select');
+        select.innerHTML = '<option value="">Loading...</option>';
+        
+        makeRequest(`/api/${software}/versions`)
+            .then(data => {
+                if (data.success && data.versions) {
+                    versionData = {};
+                    data.versions.forEach(v => {
+                        versionData[v.version] = v.download_url;
+                    });
+                    
+                    select.innerHTML = '<option value="">Select version...</option>' + 
+                        data.versions.map(v => `<option value="${v.version}">${v.display_name}</option>`).join('');
+                    
+                    select.onchange = function() {
+                        const url = versionData[this.value] || '--';
+                        document.getElementById('version-download-url').textContent = url;
+                    };
+                }
+            });
+    }
+
+    function loadServerVersionInfo() {
+        makeRequest(`/api/server/${serverName}/version`)
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('server-software-name').textContent = data.software || 'Unknown';
+                    document.getElementById('server-mc-version').textContent = 'Version: ' + (data.mc_version || '--');
+                    document.getElementById('server-java-version').textContent = data.java_version || '--';
+                    document.getElementById('server-jar-name').textContent = data.jar_name || '--';
+                }
+            });
+    }
+
+    function installServerVersion() {
+        const software = document.getElementById('version-software-type').value;
+        const version = document.getElementById('version-mc-select').value;
+        const downloadUrl = versionData[version];
+        
+        if (!version || !downloadUrl) {
+            showNotification('Please select a version', 'error');
+            return;
+        }
+        
+        if (!confirm(`Download and install ${software.charAt(0).toUpperCase() + software.slice(1)} ${version}? This will replace the current server JAR.`)) return;
+        
+        showNotification('Downloading server JAR...', 'info');
+        
+        makeRequest(`/api/server/${serverName}/version/install`, {
+            method: 'POST',
+            body: JSON.stringify({ software, version, download_url: downloadUrl })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                loadServerVersionInfo();
+            }
+        });
+    }
+
+    // Initialize version section
+    if (document.getElementById('version-software-type')) {
+        loadVersionOptions();
+        loadServerVersionInfo();
+    }
+
+    setInterval(refreshConsole, 5000);
+</script>
+{% endblock %}

@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block title %}Plugin Manager - {{ server.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold neon-text">Plugin Manager</h1>
+            <p class="text-gray-400">Browse and manage server plugins</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="refreshInstalledPlugins()" class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="glass-card">
+        <div class="border-b border-gray-700">
+            <nav class="flex space-x-8 px-6">
+                <button class="plugin-tab active py-4 border-b-2 border-blue-500 text-blue-400" data-tab="installed">
+                    <i class="fas fa-puzzle-piece mr-2"></i>Installed
+                </button>
+                <button class="plugin-tab py-4 border-b-2 border-transparent hover:border-gray-500" data-tab="browse">
+                    <i class="fas fa-search mr-2"></i>Browse
+                </button>
+                <button class="plugin-tab py-4 border-b-2 border-transparent hover:border-gray-500" data-tab="upload">
+                    <i class="fas fa-upload mr-2"></i>Upload
+                </button>
+            </nav>
+        </div>
+
+        <!-- Installed Plugins Tab -->
+        <div id="installed-tab" class="plugin-tab-content p-6">
+            <div id="installed-plugins" class="space-y-4">
+                <div class="text-center py-8">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-400">Loading installed plugins...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Browse Plugins Tab -->
+        <div id="browse-tab" class="plugin-tab-content p-6 hidden">
+            <!-- Search Bar -->
+            <div class="mb-6">
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <input type="text" id="plugin-search" placeholder="Search plugins..." 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <select id="plugin-category" class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="">All Categories</option>
+                        <option value="Admin Tools">Admin Tools</option>
+                        <option value="Anti-Griefing Tools">Anti-Griefing</option>
+                        <option value="Chat Related">Chat</option>
+                        <option value="Developer Tools">Developer</option>
+                        <option value="Economy">Economy</option>
+                        <option value="Fun">Fun</option>
+                        <option value="General">General</option>
+                        <option value="Mechanics">Mechanics</option>
+                        <option value="Miscellaneous">Misc</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="World Management">World Management</option>
+                    </select>
+                    <select id="plugin-sort" class="bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="downloads">Downloads</option>
+                        <option value="rating">Rating</option>
+                        <option value="name">Name</option>
+                        <option value="updated">Updated</option>
+                    </select>
+                    <button onclick="searchPlugins()" class="btn-primary">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                </div>
+            </div>
+
+            <!-- Popular Plugins -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">Popular Plugins</h3>
+                    <button onclick="loadPopularPlugins()" class="text-blue-400 hover:text-blue-300">
+                        <i class="fas fa-fire mr-1"></i>View All
+                    </button>
+                </div>
+                <div id="popular-plugins" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Popular plugins will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div id="search-results" class="hidden">
+                <h3 class="text-lg font-bold mb-4">Search Results</h3>
+                <div id="plugin-results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Search results will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Plugin Tab -->
+        <div id="upload-tab" class="plugin-tab-content p-6 hidden">
+            <div class="text-center">
+                <div class="border-2 border-dashed border-gray-600 rounded-lg p-12" 
+                     ondrop="handlePluginDrop(event)" ondragover="handleDragOver(event)">
+                    <i class="fas fa-puzzle-piece text-6xl text-gray-400 mb-4"></i>
+                    <h3 class="text-xl font-bold mb-2">Upload Plugin</h3>
+                    <p class="text-gray-400 mb-4">Drag & drop .jar files here or</p>
+                    <button onclick="document.getElementById('plugin-file-input').click()" class="btn-primary">
+                        Choose Files
+                    </button>
+                    <input type="file" id="plugin-file-input" accept=".jar" multiple style="display: none" onchange="handlePluginFileSelect(event)">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plugin Details Modal -->
+<div id="plugin-details-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="glass-card p-6 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h3 class="text-xl font-bold neon-text" id="plugin-detail-name">Plugin Name</h3>
+                <p class="text-gray-400" id="plugin-detail-author">by Author</p>
+            </div>
+            <button onclick="closePluginDetails()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="plugin-detail-content" class="space-y-4">
+            <!-- Plugin details will be populated here -->
+        </div>
+        
+        <div class="flex space-x-4 mt-6">
+            <button id="download-plugin-btn" onclick="downloadPlugin()" class="flex-1 btn-primary">
+                <i class="fas fa-download mr-2"></i>Download & Install
+            </button>
+            <button onclick="closePluginDetails()" class="flex-1 bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const serverName = '{{ server.name }}';
+    let currentPlugin = null;
+
+    // Tab switching
+    document.querySelectorAll('.plugin-tab').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active class from all tabs
+            document.querySelectorAll('.plugin-tab').forEach(b => {
+                b.classList.remove('active', 'border-blue-500', 'text-blue-400');
+                b.classList.add('border-transparent');
+            });
+            
+            // Hide all tab contents
+            document.querySelectorAll('.plugin-tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Activate clicked tab
+            this.classList.add('active', 'border-blue-500', 'text-blue-400');
+            this.classList.remove('border-transparent');
+            
+            // Show corresponding content
+            const tabId = this.dataset.tab + '-tab';
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            // Load content if needed
+            if (this.dataset.tab === 'installed') {
+                refreshInstalledPlugins();
+            } else if (this.dataset.tab === 'browse') {
+                loadPopularPlugins();
+            }
+        });
+    });
+
+    // Plugin management functions
+    function refreshInstalledPlugins() {
+        const container = document.getElementById('installed-plugins');
+        container.innerHTML = '<div class="text-center py-8"><div class="loading-spinner mx-auto mb-4"></div><p class="text-gray-400">Loading installed plugins...</p></div>';
+        
+        makeRequest(`/api/server/${serverName}/plugins`)
+            .then(data => {
+                if (data.success) {
+                    displayInstalledPlugins(data.plugins);
+                } else {
+                    container.innerHTML = '<div class="text-center py-8"><p class="text-red-400">Failed to load plugins</p></div>';
+                }
+            });
+    }
+
+    function displayInstalledPlugins(plugins) {
+        const container = document.getElementById('installed-plugins');
+        
+        if (plugins.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="text-6xl text-gray-600 mb-4">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">No Plugins Installed</h3>
+                    <p class="text-gray-400 mb-6">Browse plugins to get started!</p>
+                    <button onclick="switchToTab('browse')" class="btn-primary">
+                        <i class="fas fa-search mr-2"></i>Browse Plugins
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        const html = plugins.map(plugin => `
+            <div class="glass-card p-4 hover-lift transition-all">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h4 class="text-lg font-bold">${plugin.name}</h4>
+                        <p class="text-gray-400 text-sm">${plugin.version || 'Unknown Version'}</p>
+                        <p class="text-gray-500 text-xs">${plugin.size}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <span class="px-2 py-1 bg-green-600 text-xs rounded">${plugin.status}</span>
+                        <button onclick="deletePlugin('${plugin.name}')" class="text-red-400 hover:text-red-300 p-1">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = html;
+    }
+
+    function searchPlugins() {
+        const query = document.getElementById('plugin-search').value;
+        const category = document.getElementById('plugin-category').value;
+        const sort = document.getElementById('plugin-sort').value;
+        
+        const resultsContainer = document.getElementById('plugin-results');
+        const searchResults = document.getElementById('search-results');
+        
+        resultsContainer.innerHTML = '<div class="col-span-full text-center py-8"><div class="loading-spinner mx-auto mb-4"></div><p class="text-gray-400">Searching plugins...</p></div>';
+        searchResults.classList.remove('hidden');
+        
+        makeRequest(`/api/plugins/search?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&sort=${encodeURIComponent(sort)}`)
+            .then(data => {
+                if (data.success) {
+                    displayPluginResults(data.plugins, resultsContainer);
+                } else {
+                    resultsContainer.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-red-400">Search failed</p></div>';
+                }
+            });
+    }
+
+    function loadPopularPlugins() {
+        const container = document.getElementById('popular-plugins');
+        container.innerHTML = '<div class="col-span-full text-center py-8"><div class="loading-spinner mx-auto mb-4"></div><p class="text-gray-400">Loading popular plugins...</p></div>';
+        
+        makeRequest('/api/plugins/popular')
+            .then(data => {
+                if (data.success) {
+                    displayPluginResults(data.plugins, container);
+                } else {
+                    container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-red-400">Failed to load plugins</p></div>';
+                }
+            });
+    }
+
+    function displayPluginResults(plugins, container) {
+        if (plugins.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center py-8"><p class="text-gray-400">No plugins found</p></div>';
+            return;
+        }
+        
+        const html = plugins.map(plugin => `
+            <div class="plugin-card glass-card p-4 hover-lift transition-all cursor-pointer" onclick="showPluginDetails('${plugin.id}')">
+                <div class="flex justify-between items-start mb-3">
+                    <h4 class="text-lg font-bold">${plugin.name}</h4>
+                    <div class="flex items-center space-x-1 text-yellow-400">
+                        <i class="fas fa-star text-xs"></i>
+                        <span class="text-xs">${plugin.rating || 'N/A'}</span>
+                    </div>
+                </div>
+                
+                <p class="text-gray-400 text-sm mb-3 line-clamp-2">${plugin.description || 'No description available'}</p>
+                
+                <div class="flex justify-between items-center text-xs text-gray-500">
+                    <span>by ${plugin.author}</span>
+                    <span><i class="fas fa-download mr-1"></i>${plugin.downloads || 0}</span>
+                </div>
+                
+                <div class="mt-3">
+                    <span class="px-2 py-1 bg-blue-600 text-xs rounded">${plugin.category || 'General'}</span>
+                    ${plugin.premium ? '<span class="px-2 py-1 bg-yellow-600 text-xs rounded ml-2">Premium</span>' : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = html;
+    }
+
+    function showPluginDetails(pluginId) {
+        makeRequest(`/api/plugins/details/${pluginId}`)
+            .then(data => {
+                if (data.success) {
+                    const plugin = data.plugin;
+                    currentPlugin = plugin;
+                    
+                    document.getElementById('plugin-detail-name').textContent = plugin.name;
+                    document.getElementById('plugin-detail-author').textContent = `by ${plugin.author}`;
+                    
+                    const content = document.getElementById('plugin-detail-content');
+                    content.innerHTML = `
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p class="text-sm text-gray-400">Version</p>
+                                <p class="font-medium">${plugin.version || 'Unknown'}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Downloads</p>
+                                <p class="font-medium">${(plugin.downloads || 0).toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Rating</p>
+                                <p class="font-medium">${plugin.rating || 'Not rated'}/5.0</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Updated</p>
+                                <p class="font-medium">${plugin.updated || 'Unknown'}</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <p class="text-sm text-gray-400 mb-2">Description</p>
+                            <p class="text-gray-300">${plugin.description || 'No description available'}</p>
+                        </div>
+                        
+                        ${plugin.premium ? '<div class="bg-yellow-600 bg-opacity-20 border border-yellow-600 rounded-lg p-3 mt-4"><p class="text-yellow-400 text-sm"><i class="fas fa-crown mr-2"></i>This is a premium plugin and requires purchase.</p></div>' : ''}
+                    `;
+                    
+                    const downloadBtn = document.getElementById('download-plugin-btn');
+                    if (plugin.premium) {
+                        downloadBtn.innerHTML = '<i class="fas fa-external-link-alt mr-2"></i>View on SpigotMC';
+                        downloadBtn.onclick = () => window.open(plugin.url, '_blank');
+                    } else {
+                        downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i>Download & Install';
+                        downloadBtn.onclick = downloadPlugin;
+                    }
+                    
+                    document.getElementById('plugin-details-modal').classList.remove('hidden');
+                } else {
+                    showNotification('Failed to load plugin details', 'error');
+                }
+            });
+    }
+
+    function closePluginDetails() {
+        document.getElementById('plugin-details-modal').classList.add('hidden');
+        currentPlugin = null;
+    }
+
+    function downloadPlugin() {
+        if (!currentPlugin || currentPlugin.premium) return;
+        
+        showNotification(`Downloading ${currentPlugin.name}...`, 'info');
+        
+        makeRequest(`/api/server/${serverName}/plugins/install`, {
+            method: 'POST',
+            body: JSON.stringify({
+                plugin_id: currentPlugin.id,
+                plugin_name: currentPlugin.name
+            })
+        }).then(data => {
+            if (data.success) {
+                showNotification(`Successfully installed ${currentPlugin.name}!`, 'success');
+                closePluginDetails();
+                if (document.querySelector('.plugin-tab.active').dataset.tab === 'installed') {
+                    refreshInstalledPlugins();
+                }
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+    }
+
+    function deletePlugin(pluginName) {
+        if (!confirm(`Are you sure you want to delete ${pluginName}?`)) return;
+        
+        makeRequest(`/api/server/${serverName}/plugins/delete`, {
+            method: 'POST',
+            body: JSON.stringify({ plugin_name: pluginName })
+        }).then(data => {
+            if (data.success) {
+                showNotification(`Deleted ${pluginName}`, 'success');
+                refreshInstalledPlugins();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+    }
+
+    // Upload functions
+    function handleDragOver(event) {
+        event.preventDefault();
+    }
+
+    function handlePluginDrop(event) {
+        event.preventDefault();
+        const files = Array.from(event.dataTransfer.files).filter(f => f.name.endsWith('.jar'));
+        if (files.length > 0) {
+            uploadPlugins(files);
+        }
+    }
+
+    function handlePluginFileSelect(event) {
+        const files = Array.from(event.target.files);
+        uploadPlugins(files);
+    }
+
+    function uploadPlugins(files) {
+        files.forEach(file => {
+            const formData = new FormData();
+            formData.append('plugin', file);
+            
+            showNotification(`Uploading ${file.name}...`, 'info');
+            
+            fetch(`/api/server/${serverName}/plugins/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Uploaded ${file.name}`, 'success');
+                } else {
+                    showNotification(`Failed to upload ${file.name}: ${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification(`Upload error: ${error}`, 'error');
+            });
+        });
+    }
+
+    function switchToTab(tab) {
+        document.querySelector(`[data-tab="${tab}"]`).click();
+    }
+
+    // Initialize
+    refreshInstalledPlugins();
+</script>
+{% endblock %}

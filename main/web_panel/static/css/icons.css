@@ -1,0 +1,157 @@
+/**
+ * CrazeDynPanel v2.0 - Professional Icon Styles
+ * Modern icon integration for web interface
+ */
+
+/* Icon base styles */
+.icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    filter: brightness(0) invert(1); /* White icons for dark theme */
+    transition: all 0.3s ease;
+}
+
+.icon-small {
+    width: 16px;
+    height: 16px;
+}
+
+.icon-medium {
+    width: 24px;
+    height: 24px;
+}
+
+.icon-large {
+    width: 32px;
+    height: 32px;
+}
+
+/* Icon hover effects */
+.icon-hover:hover {
+    filter: brightness(0) saturate(100%) invert(58%) sepia(94%) saturate(2880%) hue-rotate(184deg) brightness(104%) contrast(101%);
+    transform: scale(1.1);
+}
+
+/* Menu icon styles */
+.menu-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    filter: brightness(0) invert(1);
+    transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.nav-item:hover .menu-icon {
+    filter: brightness(0) saturate(100%) invert(58%) sepia(94%) saturate(2880%) hue-rotate(184deg) brightness(104%) contrast(101%);
+    transform: scale(1.1);
+}
+
+/* Button icon styles */
+.btn-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    filter: brightness(0) invert(1);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover .btn-icon {
+    transform: scale(1.1);
+}
+
+/* Status icon styles */
+.status-icon {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.status-icon.online {
+    background: #22c55e;
+    animation: pulse 2s infinite;
+}
+
+.status-icon.offline {
+    background: #ef4444;
+}
+
+.status-icon.starting {
+    background: #f59e0b;
+    animation: pulse 2s infinite;
+}
+
+/* Server type icon styles */
+.server-type-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    border-radius: 4px;
+    background: rgba(0, 212, 255, 0.1);
+    padding: 4px;
+    filter: brightness(0) saturate(100%) invert(58%) sepia(94%) saturate(2880%) hue-rotate(184deg) brightness(104%) contrast(101%);
+}
+
+/* Icon fallback styles */
+.icon-fallback {
+    display: none;
+    font-size: 16px;
+    color: var(--accent-primary);
+    margin-right: 8px;
+}
+
+/* When image fails to load, show fallback */
+img.icon:broken + .icon-fallback {
+    display: inline-block;
+}
+
+/* Animation utilities */
+@keyframes iconPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.icon-pulse {
+    animation: iconPulse 2s infinite;
+}
+
+/* Custom icon filters for different themes */
+.icon-blue {
+    filter: brightness(0) saturate(100%) invert(58%) sepia(94%) saturate(2880%) hue-rotate(184deg) brightness(104%) contrast(101%);
+}
+
+.icon-green {
+    filter: brightness(0) saturate(100%) invert(64%) sepia(98%) saturate(2321%) hue-rotate(95deg) brightness(103%) contrast(107%);
+}
+
+.icon-red {
+    filter: brightness(0) saturate(100%) invert(35%) sepia(91%) saturate(1796%) hue-rotate(338deg) brightness(99%) contrast(107%);
+}
+
+.icon-yellow {
+    filter: brightness(0) saturate(100%) invert(77%) sepia(94%) saturate(1898%) hue-rotate(2deg) brightness(104%) contrast(106%);
+}
+
+/* Responsive icon sizes */
+@media (max-width: 768px) {
+    .menu-icon {
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
+    }
+    
+    .btn-icon {
+        width: 14px;
+        height: 14px;
+        margin-right: 6px;
+    }
+}

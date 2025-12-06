@@ -1,0 +1,11 @@
+[project]
+name = "CrazeDyn"
+version = "3.1.0"
+description = "CrazeDynPanel v3.0 is a professional Minecraft server management panel that lets you run and control your servers easily. It comes with two modes: Desktop GUI (PyQt6 app) → A Windows-style interface for managing servers. Web Panel (Flask app) → A browser-based panel you can access anywhere. Both → Install both options together."
+requires-python = ">=3.11"
+dependencies = [
+    "psutil>=7.0.0",
+    "pyinstaller>=6.15.0",
+    "pyqt6>=6.9.1",
+    "requests>=2.32.5",
+]

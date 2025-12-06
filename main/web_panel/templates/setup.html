@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Initial Setup - CrazeDyn Panel{% endblock %}
+
+{% block content %}
+<style>
+    .setup-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: -240px;
+        padding: 20px;
+    }
+
+    .setup-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 40px;
+        width: 100%;
+        max-width: 480px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .setup-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-bottom: 12px;
+    }
+
+    .setup-logo-icon {
+        width: 56px;
+        height: 56px;
+        background: var(--accent-primary);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        color: white;
+    }
+
+    .setup-title {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .setup-subtitle {
+        color: var(--text-muted);
+        font-size: 14px;
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .flash-message {
+        padding: 14px 18px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+    }
+
+    .flash-message.error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        color: #f87171;
+    }
+
+    .flash-message.success {
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        color: #4ade80;
+    }
+
+    .info-box {
+        background: rgba(124, 58, 237, 0.1);
+        border: 1px solid rgba(124, 58, 237, 0.2);
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 24px;
+    }
+
+    .info-box-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        font-weight: 600;
+        color: var(--accent-light);
+        font-size: 14px;
+    }
+
+    .info-box ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .info-box li {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+        padding-left: 16px;
+        position: relative;
+    }
+
+    .info-box li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 8px;
+        width: 5px;
+        height: 5px;
+        background: var(--accent-light);
+        border-radius: 50%;
+    }
+
+    .info-box li:last-child {
+        margin-bottom: 0;
+    }
+
+    .setup-footer {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .hint-text {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+        .setup-container {
+            margin-left: 0;
+        }
+    }
+</style>
+
+<div class="setup-container">
+    <div class="setup-card">
+        <div class="text-center">
+            <div class="setup-logo">
+                <div class="setup-logo-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+            </div>
+            <div class="setup-title" style="margin-bottom: 8px;">Welcome to CrazeDyn Panel</div>
+            <p class="setup-subtitle">Let's set up your admin account</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        <i class="fas {% if category == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-envelope" style="margin-right: 6px;"></i>Admin Email
+                </label>
+                <input type="email" name="email" required class="input"
+                       placeholder="admin@yourserver.com">
+                <p class="hint-text">This will be your login username</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-lock" style="margin-right: 6px;"></i>Admin Password
+                </label>
+                <input type="password" name="password" required minlength="8" class="input"
+                       placeholder="Create a strong password">
+                <p class="hint-text">Minimum 8 characters, use letters, numbers and symbols</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-shield-alt" style="margin-right: 6px;"></i>Confirm Password
+                </label>
+                <input type="password" name="confirm_password" required minlength="8" class="input"
+                       placeholder="Confirm your password">
+            </div>
+
+            <div class="info-box">
+                <div class="info-box-header">
+                    <i class="fas fa-lock"></i>
+                    Security Notice
+                </div>
+                <ul>
+                    <li>Your credentials are encrypted and stored locally</li>
+                    <li>Only you will have access to this admin panel</li>
+                    <li>Keep your login details secure and private</li>
+                </ul>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px; font-size: 15px;">
+                <i class="fas fa-rocket"></i>
+                Complete Setup & Login
+            </button>
+        </form>
+
+        <div class="setup-footer">
+            <i class="fas fa-gamepad" style="margin-right: 4px;"></i>
+            CrazeDyn Panel - Game Server Manager
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelector('input[name="email"]').focus();
+    
+    const password = document.querySelector('input[name="password"]');
+    const confirm = document.querySelector('input[name="confirm_password"]');
+    
+    confirm.addEventListener('input', function() {
+        if (this.value && password.value !== this.value) {
+            this.setCustomValidity('Passwords do not match');
+        } else {
+            this.setCustomValidity('');
+        }
+    });
+    
+    password.addEventListener('input', function() {
+        if (confirm.value && this.value !== confirm.value) {
+            confirm.setCustomValidity('Passwords do not match');
+        } else {
+            confirm.setCustomValidity('');
+        }
+    });
+</script>
+{% endblock %}

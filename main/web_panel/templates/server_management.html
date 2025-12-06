@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}{{ server.name }} - Server Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold neon-text">{{ server.name }}</h1>
+            <p class="text-gray-400">Server Management Dashboard</p>
+        </div>
+        <div class="flex space-x-3">
+            <button id="start-btn" onclick="startServer()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-play mr-2"></i>Start
+            </button>
+            <button id="stop-btn" onclick="stopServer()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-stop mr-2"></i>Stop
+            </button>
+            <button id="restart-btn" onclick="restartServer()" class="bg-yellow-600 hover:bg-yellow-500 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-redo mr-2"></i>Restart
+            </button>
+            <button id="delete-btn" onclick="deleteCurrentServer()" class="bg-red-700 hover:bg-red-600 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-trash mr-2"></i>Delete Server
+            </button>
+        </div>
+    </div>
+
+    <!-- Server Status -->
+    <div class="glass-card p-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="text-center">
+                <div class="status-indicator status-offline mb-2" id="server-status">Offline</div>
+                <p class="text-sm text-gray-400">Status</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold neon-text" id="player-count">0</p>
+                <p class="text-sm text-gray-400">Players Online</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-green-400" id="server-uptime">00:00:00</p>
+                <p class="text-sm text-gray-400">Uptime</p>
+            </div>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-purple-400">{{ server.port }}</p>
+                <p class="text-sm text-gray-400">Port</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="glass-card">
+        <div class="border-b border-gray-700">
+            <nav class="flex space-x-8 px-6">
+                <button class="tab-btn active py-4 border-b-2 border-blue-500 text-blue-400" data-tab="console">
+                    <i class="fas fa-terminal mr-2"></i>Console
+                </button>
+                <a href="/server/{{ server.name }}/files" class="tab-btn py-4 border-b-2 border-transparent hover:border-gray-500">
+                    <i class="fas fa-folder mr-2"></i>Files
+                </a>
+                <button class="tab-btn py-4 border-b-2 border-transparent hover:border-gray-500" data-tab="settings">
+                    <i class="fas fa-cogs mr-2"></i>Settings
+                </button>
+                <a href="/server/{{ server.name }}/plugins" class="tab-btn py-4 border-b-2 border-transparent hover:border-gray-500">
+                    <i class="fas fa-puzzle-piece mr-2"></i>Plugins
+                </a>
+            </nav>
+        </div>
+
+        <!-- Console Tab -->
+        <div id="console-tab" class="tab-content p-6">
+            <div class="space-y-4">
+                <div class="console-output h-96 p-4 rounded-lg overflow-y-auto scrollbar-custom" id="console-output">
+                    <div class="text-green-400">[INFO] Console ready...</div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <input type="text" id="console-input" placeholder="Enter command..." 
+                           class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
+                           onkeypress="if(event.key==='Enter') sendCommand()">
+                    <button onclick="sendCommand()" class="btn-primary">
+                        <i class="fas fa-paper-plane mr-2"></i>Send
+                    </button>
+                    <button onclick="clearConsole()" class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-all">
+                        <i class="fas fa-trash mr-2"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content p-6 hidden">
+            <div class="space-y-6">
+                <h3 class="text-lg font-bold">Server Configuration</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Server Name</label>
+                        <input type="text" value="{{ server.name }}" disabled
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Server Port</label>
+                        <input type="number" value="{{ server.port }}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Min RAM</label>
+                        <input type="text" value="{{ server.min_ram }}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Max RAM</label>
+                        <input type="text" value="{{ server.max_ram }}" 
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button class="btn-primary">
+                        <i class="fas fa-save mr-2"></i>Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const serverName = '{{ server.name }}';
+    
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active', 'border-blue-500', 'text-blue-400');
+                b.classList.add('border-transparent');
+            });
+            
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Activate clicked tab
+            this.classList.add('active', 'border-blue-500', 'text-blue-400');
+            this.classList.remove('border-transparent');
+            
+            // Show corresponding content
+            const tabId = this.dataset.tab + '-tab';
+            document.getElementById(tabId).classList.remove('hidden');
+        });
+    });
+
+    // Server control functions
+    function startServer() {
+        makeRequest(`/api/server/${serverName}/start`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    function stopServer() {
+        makeRequest(`/api/server/${serverName}/stop`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    function restartServer() {
+        makeRequest(`/api/server/${serverName}/restart`, { method: 'POST' })
+            .then(data => {
+                showNotification(data.message, data.success ? 'success' : 'error');
+            });
+    }
+
+    // Console functions
+    function sendCommand() {
+        const input = document.getElementById('console-input');
+        const command = input.value.trim();
+        
+        if (!command) return;
+        
+        // Add command to console
+        const consoleOutput = document.getElementById('console-output');
+        const commandElement = document.createElement('div');
+        commandElement.className = 'text-blue-400';
+        commandElement.textContent = `> ${command}`;
+        consoleOutput.appendChild(commandElement);
+        
+        // Send command to server
+        makeRequest(`/api/server/${serverName}/command`, {
+            method: 'POST',
+            body: JSON.stringify({ command: command })
+        }).then(data => {
+            if (!data.success) {
+                const errorElement = document.createElement('div');
+                errorElement.className = 'text-red-400';
+                errorElement.textContent = `Error: ${data.message}`;
+                consoleOutput.appendChild(errorElement);
+            }
+        });
+        
+        // Clear input and scroll to bottom
+        input.value = '';
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    function clearConsole() {
+        document.getElementById('console-output').innerHTML = '<div class="text-green-400">[INFO] Console cleared...</div>';
+    }
+
+    // Auto-refresh console output
+    function refreshConsole() {
+        makeRequest(`/api/server/${serverName}/console`)
+            .then(data => {
+                if (data.success && data.output) {
+                    const consoleOutput = document.getElementById('console-output');
+                    // Only update if content has changed
+                    const currentText = consoleOutput.textContent;
+                    if (!currentText.includes(data.output.slice(-100))) {
+                        const lines = data.output.split('\n');
+                        const recent = lines.slice(-50); // Show last 50 lines
+                        
+                        consoleOutput.innerHTML = recent.map(line => 
+                            `<div class="text-green-400">${line}</div>`
+                        ).join('');
+                        
+                        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                    }
+                }
+            });
+    }
+
+    // Subscribe to server updates
+    socket.emit('subscribe_server', { server_name: serverName });
+
+    // Handle server status updates
+    socket.on('stats_update', function(data) {
+        if (data.servers && data.servers[serverName]) {
+            const serverStats = data.servers[serverName];
+            
+            // Update status
+            const statusEl = document.getElementById('server-status');
+            statusEl.className = `status-indicator status-${serverStats.status}`;
+            statusEl.textContent = serverStats.status.charAt(0).toUpperCase() + serverStats.status.slice(1);
+            
+            // Update player count
+            document.getElementById('player-count').textContent = serverStats.players;
+        }
+    });
+
+    function deleteCurrentServer() {
+        const serverName = '{{ server.name }}';
+        if (!confirm(`Are you sure you want to delete server "${serverName}"? This action cannot be undone and all server data will be lost.`)) {
+            return;
+        }
+        
+        fetch(`/api/server/${serverName}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Failed to delete server - Please try again', 'error');
+            console.error('Delete server error:', error);
+        });
+    }
+
+    // Auto-refresh console every 5 seconds
+    setInterval(refreshConsole, 5000);
+    
+    // Initial console load
+    refreshConsole();
+</script>
+{% endblock %}

@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+
+{% block title %}File Manager - {{ server.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold neon-text">File Manager</h1>
+            <p class="text-gray-400" id="current-path">/</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="uploadFile()" class="btn-primary">
+                <i class="fas fa-upload mr-2"></i>Upload File
+            </button>
+            <button onclick="createFolder()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-folder-plus mr-2"></i>New Folder
+            </button>
+            <button onclick="refreshFiles()" class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
+    <div class="glass-card p-4">
+        <nav class="flex items-center space-x-2 text-sm">
+            <button onclick="navigateToPath('/')" class="text-blue-400 hover:text-blue-300">
+                <i class="fas fa-home mr-1"></i>Root
+            </button>
+            <span id="breadcrumb-path"></span>
+        </nav>
+    </div>
+
+    <!-- File List -->
+    <div class="glass-card">
+        <div class="p-4 border-b border-gray-700">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold">Files & Folders</h3>
+                <div class="flex space-x-2">
+                    <button id="view-grid" onclick="setViewMode('grid')" class="p-2 rounded bg-blue-600 text-white">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button id="view-list" onclick="setViewMode('list')" class="p-2 rounded bg-gray-600 hover:bg-gray-500">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="file-list-container" class="p-4">
+            <div id="loading-spinner" class="text-center py-8">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-400">Loading files...</p>
+            </div>
+            
+            <div id="file-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 hidden">
+                <!-- Grid view files will be populated here -->
+            </div>
+            
+            <div id="file-list" class="space-y-2 hidden">
+                <!-- List view files will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="glass-card p-6 max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold neon-text">Upload File</h3>
+            <button onclick="closeUploadModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="space-y-4">
+            <div class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center" 
+                 ondrop="handleDrop(event)" ondragover="handleDragOver(event)">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-400 mb-2">Drag & drop files here or</p>
+                <button onclick="document.getElementById('file-input').click()" class="btn-primary">
+                    Choose Files
+                </button>
+                <input type="file" id="file-input" multiple style="display: none" onchange="handleFileSelect(event)">
+            </div>
+            
+            <div id="upload-progress" class="hidden">
+                <div class="flex justify-between text-sm mb-2">
+                    <span id="upload-filename">filename.txt</span>
+                    <span id="upload-percent">0%</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div id="upload-bar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit File Modal -->
+<div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="glass-card p-6 max-w-4xl w-full mx-4 max-h-screen overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold neon-text" id="edit-filename">Edit File</h3>
+            <div class="flex space-x-2">
+                <button onclick="saveFile()" class="btn-primary">
+                    <i class="fas fa-save mr-2"></i>Save
+                </button>
+                <button onclick="closeEditModal()" class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg">
+                    Cancel
+                </button>
+            </div>
+        </div>
+        
+        <textarea id="file-editor" class="w-full h-96 bg-gray-800 border border-gray-600 rounded-lg p-4 font-mono text-sm focus:outline-none focus:border-blue-500" 
+                  placeholder="File content will appear here..."></textarea>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu" class="fixed bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50 hidden">
+    <div class="py-2">
+        <button onclick="downloadFile()" class="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center">
+            <i class="fas fa-download mr-2"></i>Download
+        </button>
+        <button onclick="editFile()" class="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center">
+            <i class="fas fa-edit mr-2"></i>Edit
+        </button>
+        <button onclick="renameFile()" class="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center">
+            <i class="fas fa-pencil-alt mr-2"></i>Rename
+        </button>
+        <hr class="border-gray-600 my-1">
+        <button onclick="deleteFile()" class="w-full text-left px-4 py-2 hover:bg-red-600 text-red-400 flex items-center">
+            <i class="fas fa-trash mr-2"></i>Delete
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const serverName = '{{ server.name }}';
+    let currentPath = '/';
+    let selectedFile = null;
+    let viewMode = 'grid';
+
+    // File management functions
+    function refreshFiles() {
+        document.getElementById('loading-spinner').classList.remove('hidden');
+        document.getElementById('file-grid').classList.add('hidden');
+        document.getElementById('file-list').classList.add('hidden');
+        
+        makeRequest(`/api/server/${serverName}/files?path=${encodeURIComponent(currentPath)}`)
+            .then(data => {
+                if (data.success) {
+                    displayFiles(data.files);
+                    updateBreadcrumb();
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .finally(() => {
+                document.getElementById('loading-spinner').classList.add('hidden');
+            });
+    }
+
+    function displayFiles(files) {
+        const gridContainer = document.getElementById('file-grid');
+        const listContainer = document.getElementById('file-list');
+        
+        gridContainer.innerHTML = '';
+        listContainer.innerHTML = '';
+        
+        if (currentPath !== '/') {
+            // Add back button
+            const backItem = createFileItem({
+                name: '..',
+                type: 'directory',
+                size: 0,
+                modified: ''
+            }, true);
+            
+            if (viewMode === 'grid') {
+                gridContainer.appendChild(backItem);
+            } else {
+                listContainer.appendChild(backItem);
+            }
+        }
+        
+        files.forEach(file => {
+            const fileItem = createFileItem(file);
+            if (viewMode === 'grid') {
+                gridContainer.appendChild(fileItem);
+            } else {
+                listContainer.appendChild(fileItem);
+            }
+        });
+        
+        if (viewMode === 'grid') {
+            gridContainer.classList.remove('hidden');
+            listContainer.classList.add('hidden');
+        } else {
+            gridContainer.classList.add('hidden');
+            listContainer.classList.remove('hidden');
+        }
+    }
+
+    function createFileItem(file, isBack = false) {
+        const item = document.createElement('div');
+        
+        if (viewMode === 'grid') {
+            item.className = 'file-item bg-gray-800 p-4 rounded-lg hover:bg-gray-700 cursor-pointer transition-all text-center';
+            item.innerHTML = `
+                <div class="text-3xl mb-2 ${isBack ? 'text-yellow-400' : getFileIcon(file)}">
+                    <i class="fas ${isBack ? 'fa-arrow-left' : getFileIconClass(file)}"></i>
+                </div>
+                <p class="text-sm truncate">${file.name}</p>
+                ${!isBack ? `<p class="text-xs text-gray-400">${formatFileSize(file.size)}</p>` : ''}
+            `;
+        } else {
+            item.className = 'file-item flex items-center p-3 hover:bg-gray-800 rounded-lg cursor-pointer transition-all';
+            item.innerHTML = `
+                <div class="text-xl mr-3 ${isBack ? 'text-yellow-400' : getFileIcon(file)}">
+                    <i class="fas ${isBack ? 'fa-arrow-left' : getFileIconClass(file)}"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium">${file.name}</p>
+                    ${!isBack ? `<p class="text-xs text-gray-400">${formatFileSize(file.size)} • ${file.modified}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        if (isBack) {
+            item.onclick = () => navigateUp();
+        } else {
+            item.onclick = () => handleFileClick(file);
+            item.oncontextmenu = (e) => showContextMenu(e, file);
+        }
+        
+        return item;
+    }
+
+    function getFileIconClass(file) {
+        if (file.type === 'directory') return 'fa-folder';
+        
+        const ext = file.name.split('.').pop().toLowerCase();
+        const iconMap = {
+            'jar': 'fa-cube',
+            'json': 'fa-code',
+            'yml': 'fa-cog',
+            'yaml': 'fa-cog',
+            'properties': 'fa-cog',
+            'txt': 'fa-file-alt',
+            'log': 'fa-file-alt',
+            'png': 'fa-image',
+            'jpg': 'fa-image',
+            'jpeg': 'fa-image',
+            'gif': 'fa-image',
+            'zip': 'fa-file-archive',
+            'rar': 'fa-file-archive'
+        };
+        
+        return iconMap[ext] || 'fa-file';
+    }
+
+    function getFileIcon(file) {
+        if (file.type === 'directory') return 'text-blue-400';
+        
+        const ext = file.name.split('.').pop().toLowerCase();
+        const colorMap = {
+            'jar': 'text-orange-400',
+            'json': 'text-yellow-400',
+            'yml': 'text-green-400',
+            'yaml': 'text-green-400',
+            'properties': 'text-green-400',
+            'txt': 'text-gray-400',
+            'log': 'text-gray-400',
+            'png': 'text-purple-400',
+            'jpg': 'text-purple-400',
+            'jpeg': 'text-purple-400',
+            'gif': 'text-purple-400'
+        };
+        
+        return colorMap[ext] || 'text-gray-400';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function handleFileClick(file) {
+        if (file.type === 'directory') {
+            navigateToPath(currentPath + (currentPath.endsWith('/') ? '' : '/') + file.name);
+        } else {
+            // Handle file click - could open preview or edit
+            selectedFile = file;
+            if (isEditableFile(file)) {
+                editFile();
+            } else {
+                showNotification(`File ${file.name} selected`, 'info');
+            }
+        }
+    }
+
+    function isEditableFile(file) {
+        const editableExtensions = ['txt', 'yml', 'yaml', 'json', 'properties', 'log', 'conf', 'cfg'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        return editableExtensions.includes(ext);
+    }
+
+    function navigateToPath(path) {
+        currentPath = path;
+        refreshFiles();
+    }
+
+    function navigateUp() {
+        if (currentPath === '/') return;
+        const parts = currentPath.split('/').filter(p => p);
+        parts.pop();
+        currentPath = '/' + parts.join('/');
+        if (currentPath !== '/' && !currentPath.endsWith('/')) {
+            currentPath += '/';
+        }
+        refreshFiles();
+    }
+
+    function updateBreadcrumb() {
+        document.getElementById('current-path').textContent = currentPath;
+        const breadcrumb = document.getElementById('breadcrumb-path');
+        
+        if (currentPath === '/') {
+            breadcrumb.innerHTML = '';
+            return;
+        }
+        
+        const parts = currentPath.split('/').filter(p => p);
+        let html = '';
+        let path = '';
+        
+        parts.forEach((part, index) => {
+            path += '/' + part;
+            html += `<span class="text-gray-400">/</span>
+                     <button onclick="navigateToPath('${path}')" class="text-blue-400 hover:text-blue-300">${part}</button>`;
+        });
+        
+        breadcrumb.innerHTML = html;
+    }
+
+    function setViewMode(mode) {
+        viewMode = mode;
+        document.getElementById('view-grid').className = mode === 'grid' ? 'p-2 rounded bg-blue-600 text-white' : 'p-2 rounded bg-gray-600 hover:bg-gray-500';
+        document.getElementById('view-list').className = mode === 'list' ? 'p-2 rounded bg-blue-600 text-white' : 'p-2 rounded bg-gray-600 hover:bg-gray-500';
+        refreshFiles();
+    }
+
+    // Context menu functions
+    function showContextMenu(event, file) {
+        event.preventDefault();
+        selectedFile = file;
+        
+        const menu = document.getElementById('context-menu');
+        menu.style.left = event.pageX + 'px';
+        menu.style.top = event.pageY + 'px';
+        menu.classList.remove('hidden');
+        
+        // Hide menu when clicking elsewhere
+        document.addEventListener('click', hideContextMenu, { once: true });
+    }
+
+    function hideContextMenu() {
+        document.getElementById('context-menu').classList.add('hidden');
+    }
+
+    // File operations
+    function uploadFile() {
+        document.getElementById('upload-modal').classList.remove('hidden');
+    }
+
+    function closeUploadModal() {
+        document.getElementById('upload-modal').classList.add('hidden');
+        document.getElementById('upload-progress').classList.add('hidden');
+    }
+
+    function handleDragOver(event) {
+        event.preventDefault();
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        const files = event.dataTransfer.files;
+        uploadFiles(files);
+    }
+
+    function handleFileSelect(event) {
+        const files = event.target.files;
+        uploadFiles(files);
+    }
+
+    function uploadFiles(files) {
+        for (let file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', currentPath);
+            
+            document.getElementById('upload-progress').classList.remove('hidden');
+            document.getElementById('upload-filename').textContent = file.name;
+            
+            fetch(`/api/server/${serverName}/upload`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Uploaded ${file.name}`, 'success');
+                    refreshFiles();
+                } else {
+                    showNotification(`Failed to upload ${file.name}: ${data.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification(`Upload error: ${error}`, 'error');
+            })
+            .finally(() => {
+                closeUploadModal();
+            });
+        }
+    }
+
+    function downloadFile() {
+        if (!selectedFile) return;
+        
+        const url = `/api/server/${serverName}/download?path=${encodeURIComponent(currentPath + selectedFile.name)}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = selectedFile.name;
+        a.click();
+        
+        hideContextMenu();
+    }
+
+    function editFile() {
+        if (!selectedFile || !isEditableFile(selectedFile)) return;
+        
+        makeRequest(`/api/server/${serverName}/file/content?path=${encodeURIComponent(currentPath + selectedFile.name)}`)
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('edit-filename').textContent = `Edit: ${selectedFile.name}`;
+                    document.getElementById('file-editor').value = data.content;
+                    document.getElementById('edit-modal').classList.remove('hidden');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            });
+        
+        hideContextMenu();
+    }
+
+    function saveFile() {
+        if (!selectedFile) return;
+        
+        const content = document.getElementById('file-editor').value;
+        
+        makeRequest(`/api/server/${serverName}/file/save`, {
+            method: 'POST',
+            body: JSON.stringify({
+                path: currentPath + selectedFile.name,
+                content: content
+            })
+        }).then(data => {
+            if (data.success) {
+                showNotification(`Saved ${selectedFile.name}`, 'success');
+                closeEditModal();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-modal').classList.add('hidden');
+    }
+
+    function renameFile() {
+        if (!selectedFile) return;
+        
+        const newName = prompt('Enter new name:', selectedFile.name);
+        if (!newName || newName === selectedFile.name) return;
+        
+        makeRequest(`/api/server/${serverName}/file/rename`, {
+            method: 'POST',
+            body: JSON.stringify({
+                oldPath: currentPath + selectedFile.name,
+                newName: newName
+            })
+        }).then(data => {
+            if (data.success) {
+                showNotification(`Renamed to ${newName}`, 'success');
+                refreshFiles();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+        
+        hideContextMenu();
+    }
+
+    function deleteFile() {
+        if (!selectedFile) return;
+        
+        if (!confirm(`Are you sure you want to delete ${selectedFile.name}?`)) return;
+        
+        makeRequest(`/api/server/${serverName}/file/delete`, {
+            method: 'POST',
+            body: JSON.stringify({
+                path: currentPath + selectedFile.name
+            })
+        }).then(data => {
+            if (data.success) {
+                showNotification(`Deleted ${selectedFile.name}`, 'success');
+                refreshFiles();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+        
+        hideContextMenu();
+    }
+
+    function createFolder() {
+        const name = prompt('Enter folder name:');
+        if (!name) return;
+        
+        makeRequest(`/api/server/${serverName}/file/mkdir`, {
+            method: 'POST',
+            body: JSON.stringify({
+                path: currentPath + name
+            })
+        }).then(data => {
+            if (data.success) {
+                showNotification(`Created folder ${name}`, 'success');
+                refreshFiles();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+    }
+
+    // Initialize
+    refreshFiles();
+</script>
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Login - CrazeDyn Panel{% endblock %}
+
+{% block content %}
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: -240px;
+        padding: 20px;
+    }
+
+    .login-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 40px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .login-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-bottom: 12px;
+    }
+
+    .login-logo-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--accent-primary);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        color: white;
+    }
+
+    .login-title {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .login-subtitle {
+        color: var(--text-muted);
+        font-size: 14px;
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .flash-message {
+        padding: 14px 18px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+    }
+
+    .flash-message.error {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        color: #f87171;
+    }
+
+    .flash-message.success {
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        color: #4ade80;
+    }
+
+    .login-footer {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+        .login-container {
+            margin-left: 0;
+        }
+    }
+</style>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="text-center">
+            <div class="login-logo">
+                <div class="login-logo-icon">
+                    <i class="fas fa-gamepad"></i>
+                </div>
+                <div class="login-title">CrazeDyn Panel</div>
+            </div>
+            <p class="login-subtitle">Professional Server Management</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        <i class="fas {% if category == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-envelope" style="margin-right: 6px;"></i>Admin Email
+                </label>
+                <input type="email" name="email" required class="input"
+                       placeholder="Enter your admin email">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-lock" style="margin-right: 6px;"></i>Password
+                </label>
+                <input type="password" name="password" required class="input"
+                       placeholder="Enter your password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 14px;">
+                <i class="fas fa-sign-in-alt"></i>
+                Access Panel
+            </button>
+        </form>
+
+        <div class="login-footer">
+            <i class="fas fa-lock" style="margin-right: 4px;"></i>
+            Secure access required
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelector('input[name="email"]').focus();
+</script>
+{% endblock %}

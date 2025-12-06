@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - CrazeDyn Panel{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <div style="margin-bottom: 32px;">
+        <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">Settings</h1>
+        <p style="color: var(--text-secondary); font-size: 14px;">Configure your panel preferences</p>
+    </div>
+
+    <div class="grid-2" style="gap: 24px;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-info-circle" style="margin-right: 8px; color: var(--accent-primary);"></i>
+                    System Information
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="display: flex; justify-content: space-between; padding: 14px; background: var(--bg-secondary); border-radius: 10px;">
+                    <span style="color: var(--text-secondary);">Platform</span>
+                    <span style="font-weight: 600;" id="platform">Loading...</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 14px; background: var(--bg-secondary); border-radius: 10px;">
+                    <span style="color: var(--text-secondary);">CPU Usage</span>
+                    <span style="font-weight: 600; color: var(--accent-light);" id="sys-cpu">0%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 14px; background: var(--bg-secondary); border-radius: 10px;">
+                    <span style="color: var(--text-secondary);">Memory Usage</span>
+                    <span style="font-weight: 600; color: var(--accent-light);" id="sys-memory">0%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 14px; background: var(--bg-secondary); border-radius: 10px;">
+                    <span style="color: var(--text-secondary);">Panel Version</span>
+                    <span style="font-weight: 600;">v2.0.0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-server" style="margin-right: 8px; color: var(--success);"></i>
+                    Server Defaults
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Default RAM Allocation (MB)</label>
+                <input type="number" class="input" id="default-ram" value="2048" min="512" max="16384">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Default Port</label>
+                <input type="number" class="input" id="default-port" value="25565" min="1000" max="65535">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Default Server Type</label>
+                <select class="select" id="default-server-type">
+                    <option value="paper">Paper</option>
+                    <option value="spigot">Spigot</option>
+                    <option value="vanilla">Vanilla</option>
+                    <option value="fabric">Fabric</option>
+                    <option value="forge">Forge</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-archive" style="margin-right: 8px; color: var(--info);"></i>
+                    Backup Settings
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="auto-backup" checked>
+                    <span>Enable Automatic Backups</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Backup Interval</label>
+                <select class="select" id="backup-interval">
+                    <option value="daily">Daily</option>
+                    <option value="weekly" selected>Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Backup Retention (days)</label>
+                <input type="number" class="input" id="backup-retention" value="30" min="7" max="365">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-bolt" style="margin-right: 8px; color: var(--warning);"></i>
+                    Performance
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="performance-mode">
+                    <span>Performance Mode (Reduces monitoring frequency)</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="network-optimization" checked>
+                    <span>Network Optimization</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="auto-restart" checked>
+                    <span>Auto-restart on Crash</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-bell" style="margin-right: 8px; color: var(--danger);"></i>
+                    Notifications
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-start-stop" checked>
+                    <span>Server Start/Stop Alerts</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-crash" checked>
+                    <span>Crash Notifications</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-player" checked>
+                    <span>Player Join/Leave</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="checkbox" id="notify-backup" checked>
+                    <span>Backup Complete</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-palette" style="margin-right: 8px; color: var(--accent-primary);"></i>
+                    Appearance
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Theme</label>
+                <select class="select" id="theme-select">
+                    <option value="dark" selected>Dark (Default)</option>
+                    <option value="light">Light</option>
+                    <option value="midnight">Midnight</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Accent Color</label>
+                <div style="display: flex; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: #7c3aed; border-radius: 10px; cursor: pointer; border: 3px solid var(--accent-primary);" onclick="setAccent('#7c3aed')"></div>
+                    <div style="width: 40px; height: 40px; background: #3b82f6; border-radius: 10px; cursor: pointer;" onclick="setAccent('#3b82f6')"></div>
+                    <div style="width: 40px; height: 40px; background: #22c55e; border-radius: 10px; cursor: pointer;" onclick="setAccent('#22c55e')"></div>
+                    <div style="width: 40px; height: 40px; background: #f59e0b; border-radius: 10px; cursor: pointer;" onclick="setAccent('#f59e0b')"></div>
+                    <div style="width: 40px; height: 40px; background: #ef4444; border-radius: 10px; cursor: pointer;" onclick="setAccent('#ef4444')"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 32px; display: flex; justify-content: center; gap: 16px;">
+        <button class="btn btn-primary" onclick="saveSettings()">
+            <i class="fas fa-save"></i> Save Settings
+        </button>
+        <button class="btn btn-secondary" onclick="resetSettings()">
+            <i class="fas fa-undo"></i> Reset to Defaults
+        </button>
+    </div>
+
+    <div class="card" style="margin-top: 32px;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-shield-alt" style="margin-right: 8px; color: var(--danger);"></i>
+                Account Security
+            </div>
+        </div>
+        <div class="grid-2">
+            <div>
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Change Password</h4>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Update your admin password for security</p>
+                <button class="btn btn-secondary" onclick="openModal('change-password-modal')">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+            </div>
+            <div>
+                <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Logout</h4>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">End your current session</p>
+                <a href="/logout" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="change-password-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">Change Password</div>
+            <button class="modal-close" onclick="closeModal('change-password-modal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="input" id="current-password" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="input" id="new-password" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="input" id="confirm-password" placeholder="Confirm new password">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('change-password-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="changePassword()">
+                <i class="fas fa-key"></i> Update Password
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('platform').textContent = navigator.platform;
+
+    socket.on('stats_update', function(data) {
+        if (data.system) {
+            document.getElementById('sys-cpu').textContent = data.system.cpu.toFixed(1) + '%';
+            document.getElementById('sys-memory').textContent = data.system.memory.percent.toFixed(1) + '%';
+        }
+    });
+
+    function loadSettings() {
+        const saved = localStorage.getItem('crazedyn-settings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            document.getElementById('default-ram').value = settings.defaultRam || 2048;
+            document.getElementById('default-port').value = settings.defaultPort || 25565;
+            document.getElementById('auto-backup').checked = settings.autoBackup !== false;
+            document.getElementById('performance-mode').checked = settings.performanceMode || false;
+            document.getElementById('network-optimization').checked = settings.networkOptimization !== false;
+        }
+    }
+
+    function saveSettings() {
+        const settings = {
+            defaultRam: document.getElementById('default-ram').value,
+            defaultPort: document.getElementById('default-port').value,
+            defaultServerType: document.getElementById('default-server-type').value,
+            autoBackup: document.getElementById('auto-backup').checked,
+            backupInterval: document.getElementById('backup-interval').value,
+            backupRetention: document.getElementById('backup-retention').value,
+            performanceMode: document.getElementById('performance-mode').checked,
+            networkOptimization: document.getElementById('network-optimization').checked,
+            autoRestart: document.getElementById('auto-restart').checked,
+            notifyStartStop: document.getElementById('notify-start-stop').checked,
+            notifyCrash: document.getElementById('notify-crash').checked,
+            notifyPlayer: document.getElementById('notify-player').checked,
+            notifyBackup: document.getElementById('notify-backup').checked
+        };
+        
+        localStorage.setItem('crazedyn-settings', JSON.stringify(settings));
+        showNotification('Settings saved successfully!', 'success');
+    }
+
+    function resetSettings() {
+        if (!confirm('Reset all settings to defaults?')) return;
+        
+        localStorage.removeItem('crazedyn-settings');
+        location.reload();
+    }
+
+    function setAccent(color) {
+        document.documentElement.style.setProperty('--accent-primary', color);
+        localStorage.setItem('accent-color', color);
+    }
+
+    function changePassword() {
+        const current = document.getElementById('current-password').value;
+        const newPass = document.getElementById('new-password').value;
+        const confirm = document.getElementById('confirm-password').value;
+        
+        if (!current || !newPass || !confirm) {
+            showNotification('Please fill in all fields', 'error');
+            return;
+        }
+        
+        if (newPass !== confirm) {
+            showNotification('Passwords do not match', 'error');
+            return;
+        }
+        
+        if (newPass.length < 8) {
+            showNotification('Password must be at least 8 characters', 'error');
+            return;
+        }
+        
+        makeRequest('/api/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ current_password: current, new_password: newPass })
+        }).then(data => {
+            showNotification(data.message, data.success ? 'success' : 'error');
+            if (data.success) {
+                closeModal('change-password-modal');
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSettings();
+        const savedAccent = localStorage.getItem('accent-color');
+        if (savedAccent) {
+            document.documentElement.style.setProperty('--accent-primary', savedAccent);
+        }
+    });
+</script>
+{% endblock %}

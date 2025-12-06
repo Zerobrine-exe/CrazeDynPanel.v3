@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Plugins - CrazeDyn Panel{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold neon-text">Plugin Management</h1>
+            <p class="text-gray-400">Discover and manage plugins for your Minecraft servers</p>
+        </div>
+        <button id="refresh-plugins-btn" class="btn-primary">
+            <i class="fas fa-sync-alt mr-2"></i>
+            Refresh
+        </button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="glass-card p-6">
+        <div class="flex space-x-4">
+            <input type="text" id="plugin-search" placeholder="Search plugins..." 
+                   class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500">
+            <button onclick="searchPlugins()" class="btn-primary">
+                <i class="fas fa-search mr-2"></i>Search
+            </button>
+        </div>
+    </div>
+
+    <!-- Popular Plugins -->
+    <div class="glass-card p-6">
+        <h2 class="text-xl font-bold mb-6">Popular Plugins</h2>
+        <div id="popular-plugins" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Plugin cards will be loaded here -->
+            <div class="text-center py-12">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-400">Loading popular plugins...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    <div id="search-results" class="glass-card p-6 hidden">
+        <h2 class="text-xl font-bold mb-6">Search Results</h2>
+        <div id="search-plugins" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Search results will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Plugin Details Modal -->
+<div id="plugin-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="glass-card p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold neon-text" id="plugin-modal-title">Plugin Details</h2>
+            <button onclick="hidePluginModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="plugin-modal-content">
+            <!-- Plugin details will be loaded here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPlugins = [];
+
+    // Load popular plugins on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPopularPlugins();
+    });
+
+    function loadPopularPlugins() {
+        makeRequest('/api/plugins/popular')
+            .then(data => {
+                if (data.success) {
+                    displayPlugins(data.plugins, 'popular-plugins');
+                } else {
+                    showNotification('Failed to load popular plugins', 'error');
+                }
+            })
+            .catch(() => {
+                document.getElementById('popular-plugins').innerHTML = 
+                    '<div class="col-span-full text-center text-gray-400">Failed to load plugins. Check your connection.</div>';
+            });
+    }
+
+    function searchPlugins() {
+        const query = document.getElementById('plugin-search').value.trim();
+        if (!query) {
+            showNotification('Please enter a search term', 'error');
+            return;
+        }
+
+        const searchResults = document.getElementById('search-results');
+        searchResults.classList.remove('hidden');
+        
+        document.getElementById('search-plugins').innerHTML = 
+            '<div class="col-span-full text-center"><div class="loading-spinner mx-auto mb-4"></div><p class="text-gray-400">Searching plugins...</p></div>';
+
+        makeRequest(`/api/plugins/search?q=${encodeURIComponent(query)}`)
+            .then(data => {
+                if (data.success) {
+                    displayPlugins(data.plugins, 'search-plugins');
+                } else {
+                    document.getElementById('search-plugins').innerHTML = 
+                        '<div class="col-span-full text-center text-gray-400">No plugins found</div>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('search-plugins').innerHTML = 
+                    '<div class="col-span-full text-center text-gray-400">Search failed. Try again later.</div>';
+            });
+    }
+
+    function displayPlugins(plugins, containerId) {
+        const container = document.getElementById(containerId);
+        
+        if (!plugins || plugins.length === 0) {
+            container.innerHTML = '<div class="col-span-full text-center text-gray-400">No plugins available</div>';
+            return;
+        }
+
+        container.innerHTML = plugins.map(plugin => `
+            <div class="glass-card p-6 hover-lift transition-all cursor-pointer" onclick="showPluginDetails('${plugin.id}')">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold">${plugin.name}</h3>
+                        <p class="text-sm text-gray-400">${plugin.author || 'Unknown Author'}</p>
+                    </div>
+                    <span class="text-xs bg-blue-600 px-2 py-1 rounded">${plugin.version || '1.0.0'}</span>
+                </div>
+                
+                <p class="text-gray-300 text-sm mb-4 line-clamp-3">${plugin.description || 'No description available'}</p>
+                
+                <div class="flex justify-between items-center">
+                    <div class="flex space-x-4 text-xs text-gray-400">
+                        <span><i class="fas fa-download mr-1"></i>${plugin.downloads || '0'}</span>
+                        <span><i class="fas fa-star mr-1"></i>${plugin.rating || '0'}</span>
+                    </div>
+                    <button onclick="event.stopPropagation(); installPlugin('${plugin.id}')" 
+                            class="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-xs transition-all">
+                        <i class="fas fa-download mr-1"></i>Install
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showPluginDetails(pluginId) {
+        makeRequest(`/api/plugins/details/${pluginId}`)
+            .then(data => {
+                if (data.success) {
+                    const plugin = data.plugin;
+                    document.getElementById('plugin-modal-title').textContent = plugin.name;
+                    document.getElementById('plugin-modal-content').innerHTML = `
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-400">Author: ${plugin.author || 'Unknown'}</p>
+                                    <p class="text-gray-400">Version: ${plugin.version || '1.0.0'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-gray-400">Downloads: ${plugin.downloads || '0'}</p>
+                                    <p class="text-gray-400">Rating: ${plugin.rating || '0'}/5</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 class="font-bold mb-2">Description</h3>
+                                <p class="text-gray-300">${plugin.description || 'No description available'}</p>
+                            </div>
+                            
+                            ${plugin.features ? `
+                                <div>
+                                    <h3 class="font-bold mb-2">Features</h3>
+                                    <ul class="list-disc list-inside text-gray-300 space-y-1">
+                                        ${plugin.features.map(feature => `<li>${feature}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="flex space-x-4 pt-4">
+                                <button onclick="installPlugin('${plugin.id}')" class="flex-1 btn-primary">
+                                    <i class="fas fa-download mr-2"></i>Install Plugin
+                                </button>
+                                <button onclick="hidePluginModal()" class="flex-1 bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-all">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('plugin-modal').classList.remove('hidden');
+                } else {
+                    showNotification('Failed to load plugin details', 'error');
+                }
+            });
+    }
+
+    function hidePluginModal() {
+        document.getElementById('plugin-modal').classList.add('hidden');
+    }
+
+    function installPlugin(pluginId) {
+        // For now, just show a notification - this would need server selection
+        showNotification('Plugin installation feature coming soon! You can install plugins from individual server pages.', 'info');
+    }
+
+    // Search on Enter key
+    document.getElementById('plugin-search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchPlugins();
+        }
+    });
+
+    // Refresh button
+    document.getElementById('refresh-plugins-btn').addEventListener('click', function() {
+        loadPopularPlugins();
+        const searchResults = document.getElementById('search-results');
+        searchResults.classList.add('hidden');
+        document.getElementById('plugin-search').value = '';
+    });
+</script>
+{% endblock %}
